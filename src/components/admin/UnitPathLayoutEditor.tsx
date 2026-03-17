@@ -1,0 +1,391 @@
+import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  adminDeleteUnitPathImage,
+  adminUpdateUnitLayout,
+  adminUploadUnitPathImage,
+} from '../../api';
+
+const API_BASE = 'http://localhost:5000';
+
+type Point = {
+  x: number;
+  y: number;
+};
+
+type LayoutUnit = {
+  id: number;
+  title: string;
+  title_kz: string;
+  path_image_url: string | null;
+  path_points: Point[] | null;
+  landmark_position: Point | null;
+};
+
+type DragState =
+  | { type: 'path'; index: number }
+  | { type: 'landmark' }
+  | null;
+
+type Props = {
+  unit: LayoutUnit | null;
+  defaultImageSrc: string;
+  onClose: () => void;
+  onSaved: () => void;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizePoint(raw: Point) {
+  return {
+    x: clamp(Number(raw?.x) || 0, 0, 1),
+    y: clamp(Number(raw?.y) || 0, 0, 1),
+  };
+}
+
+function formatPoint(point: Point) {
+  return `${(point.x * 100).toFixed(1)}%, ${(point.y * 100).toFixed(1)}%`;
+}
+
+export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, onSaved }: Props) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<'path' | 'landmark'>('path');
+  const [points, setPoints] = useState<Point[]>([]);
+  const [landmarkPoint, setLandmarkPoint] = useState<Point | null>(null);
+  const [previewSrc, setPreviewSrc] = useState(defaultImageSrc);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState<DragState>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!unit) return;
+
+    setMode('path');
+    setPoints(Array.isArray(unit.path_points) ? unit.path_points.map(normalizePoint) : []);
+    setLandmarkPoint(unit.landmark_position ? normalizePoint(unit.landmark_position) : null);
+    setPreviewSrc(unit.path_image_url ? `${API_BASE}${unit.path_image_url}` : defaultImageSrc);
+    setImageFile(null);
+    setDragging(null);
+  }, [unit, defaultImageSrc]);
+
+  useEffect(() => {
+    if (!dragging) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const point = getRelativePoint(event);
+      if (!point) return;
+
+      if (dragging.type === 'path') {
+        setPoints(prev => prev.map((item, index) => index === dragging.index ? point : item));
+        return;
+      }
+
+      setLandmarkPoint(point);
+    };
+
+    const handleMouseUp = () => setDragging(null);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragging]);
+
+  if (!unit) return null;
+
+  const getRelativePoint = (event: MouseEvent | ReactMouseEvent) => {
+    const container = mapRef.current;
+    if (!container) return null;
+
+    const rect = container.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+
+    return normalizePoint({
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
+    });
+  };
+
+  const handleMapClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (dragging) return;
+
+    const point = getRelativePoint(event);
+    if (!point) return;
+
+    if (mode === 'landmark') {
+      setLandmarkPoint(point);
+      return;
+    }
+
+    setPoints(prev => [...prev, point]);
+  };
+
+  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImageFile(file);
+    setPreviewSrc(URL.createObjectURL(file));
+  };
+
+  const handleRemovePathImage = async () => {
+    if (!unit.path_image_url && !imageFile) return;
+    if (!confirm('Удалить пользовательскую картинку пути и вернуться к дефолтной?')) return;
+
+    if (unit.path_image_url) {
+      await adminDeleteUnitPathImage(unit.id);
+    }
+
+    setImageFile(null);
+    setPreviewSrc(defaultImageSrc);
+    onSaved();
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (imageFile) {
+        const formData = new FormData();
+        formData.append('path_image', imageFile);
+        await adminUploadUnitPathImage(unit.id, formData);
+      }
+
+      await adminUpdateUnitLayout(unit.id, {
+        path_points: points,
+        landmark_position: landmarkPoint,
+      });
+
+      onSaved();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="admin-modal-backdrop" onClick={onClose}>
+      <div
+        className="admin-modal"
+        style={{ maxWidth: 1180, padding: 24 }}
+        onClick={event => event.stopPropagation()}
+      >
+        <div className="admin-modal-title" style={{ marginBottom: 14 }}>
+          Разметка пути — <span style={{ color: 'var(--bg-sky)' }}>{unit.title_kz || unit.title}</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.7fr) minmax(300px, 0.9fr)', gap: 20, alignItems: 'start' }}>
+          <div>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+              <button type="button" className={mode === 'path' ? 'btn-admin-primary' : 'btn-admin-edit'} onClick={() => setMode('path')}>
+                Точки пути
+              </button>
+              <button type="button" className={mode === 'landmark' ? 'btn-admin-primary' : 'btn-admin-edit'} onClick={() => setMode('landmark')}>
+                Точка landmark
+              </button>
+              <button type="button" className="btn-admin-edit" onClick={() => setPoints(prev => prev.slice(0, -1))} disabled={points.length === 0}>
+                Удалить последнюю
+              </button>
+              <button type="button" className="btn-admin-danger" onClick={() => setPoints([])} disabled={points.length === 0}>
+                Очистить путь
+              </button>
+              <button type="button" className="btn-admin-edit" onClick={() => setLandmarkPoint(null)} disabled={!landmarkPoint}>
+                Убрать landmark
+              </button>
+            </div>
+
+            <div
+              ref={mapRef}
+              onClick={handleMapClick}
+              style={{
+                position: 'relative',
+                width: '100%',
+                borderRadius: 18,
+                overflow: 'hidden',
+                background: '#f8fafc',
+                border: '1px solid #dbeafe',
+                cursor: mode === 'path' ? 'crosshair' : 'cell',
+                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.08)',
+              }}
+            >
+              <img src={previewSrc} alt="Path layout" style={{ display: 'block', width: '100%', height: 'auto' }} />
+
+              <svg
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+              >
+                {points.length > 1 && (
+                  <polyline
+                    fill="none"
+                    stroke="rgba(239, 68, 68, 0.75)"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={points.map(point => `${point.x * 100},${point.y * 100}`).join(' ')}
+                  />
+                )}
+              </svg>
+
+              {points.map((point, index) => (
+                <button
+                  key={`path-${index}`}
+                  type="button"
+                  onMouseDown={event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDragging({ type: 'path', index });
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: `${point.x * 100}%`,
+                    top: `${point.y * 100}%`,
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    border: '2px solid white',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    transform: 'translate(-50%, -50%)',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.35)',
+                    zIndex: 3,
+                    cursor: 'grab',
+                  }}
+                  title={`Точка ${index + 1}: ${formatPoint(point)}`}
+                >
+                  {index + 1}
+                </button>
+              ))}
+
+              {landmarkPoint && (
+                <button
+                  type="button"
+                  onMouseDown={event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setDragging({ type: 'landmark' });
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: `${landmarkPoint.x * 100}%`,
+                    top: `${landmarkPoint.y * 100}%`,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
+                    border: '2px solid white',
+                    background: '#0ea5e9',
+                    color: 'white',
+                    fontSize: 18,
+                    fontWeight: 800,
+                    transform: 'translate(-50%, -50%)',
+                    boxShadow: '0 6px 16px rgba(14, 165, 233, 0.35)',
+                    zIndex: 4,
+                    cursor: 'grab',
+                  }}
+                  title={`Landmark: ${formatPoint(landmarkPoint)}`}
+                >
+                  ★
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="admin-form" style={{ gap: 12 }}>
+            <div className="admin-field">
+              <label>Фоновая картинка пути</label>
+              <div className="landmark-upload-area" onClick={() => fileRef.current?.click()}>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleImageChange} />
+                <div style={{ padding: '20px 0', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--bg-night)' }}>
+                    {imageFile ? imageFile.name : unit.path_image_url ? 'Пользовательская карта пути' : 'Используется дефолтная карта пути'}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                    Нажмите, чтобы загрузить фон для этого юнита
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button type="button" className="btn-admin-edit" onClick={() => fileRef.current?.click()}>
+                  Выбрать файл
+                </button>
+                <button
+                  type="button"
+                  className="btn-admin-danger"
+                  onClick={handleRemovePathImage}
+                  disabled={!unit.path_image_url && !imageFile}
+                >
+                  Удалить картинку
+                </button>
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14, background: '#f8fafc' }}>
+              <div style={{ fontWeight: 800, color: 'var(--bg-night)', marginBottom: 8 }}>Что делать</div>
+              <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                1. Выберите режим «Точки пути» и проставьте точки по центру дороги по порядку движения.
+                <br />
+                2. Если нужно, перетяните точку мышкой.
+                <br />
+                3. Выберите режим «Точка landmark» и поставьте место для достопримечательности.
+                <br />
+                4. На модуле уроки будут распределяться автоматически от первой точки до последней по длине пути.
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontWeight: 800, color: 'var(--bg-night)' }}>Точки пути</div>
+                <span className="admin-badge admin-badge-red">{points.length}</span>
+              </div>
+              <div style={{ display: 'grid', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+                {points.map((point, index) => (
+                  <div
+                    key={`point-row-${index}`}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: '#f8fafc', borderRadius: 10, padding: '8px 10px' }}
+                  >
+                    <div style={{ fontSize: '0.82rem', color: 'var(--bg-night)', fontWeight: 700 }}>
+                      {index + 1}. {formatPoint(point)}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-admin-danger"
+                      style={{ padding: '4px 8px', fontSize: '0.74rem' }}
+                      onClick={() => setPoints(prev => prev.filter((_, pointIndex) => pointIndex !== index))}
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                ))}
+                {points.length === 0 && (
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    Пока нет точек. Кликните по дороге на изображении.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14, background: '#f8fafc' }}>
+              <div style={{ fontWeight: 800, color: 'var(--bg-night)', marginBottom: 6 }}>Landmark</div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {landmarkPoint ? formatPoint(landmarkPoint) : 'Точка не выбрана'}
+              </div>
+            </div>
+
+            <div className="admin-form-actions">
+              <button type="button" className="btn-admin-cancel" onClick={onClose}>Отмена</button>
+              <button type="button" className="btn-admin-primary" onClick={handleSave} disabled={saving || points.length < 2}>
+                {saving ? 'Сохранение...' : 'Сохранить разметку'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

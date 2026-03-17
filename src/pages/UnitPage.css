@@ -1,0 +1,131 @@
+.unit-page {
+  min-height: 100vh;
+  position: relative;
+}
+
+.unit-container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.unit-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.2);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: var(--radius-pill);
+  color: white;
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-family);
+  transition: all 0.15s;
+  margin-bottom: 24px;
+}
+.unit-back:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.unit-title {
+  color: white;
+  font-size: 1.6rem;
+  font-weight: 900;
+  margin-bottom: 24px;
+  font-family: var(--font-display);
+}
+
+.lessons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lesson-card {
+  background: var(--paper-white);
+  border-radius: 18px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-cutout);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.lesson-card:hover:not(.locked) {
+  transform: translateY(2px);
+  box-shadow: var(--shadow-cutout-hover);
+}
+
+.lesson-card.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.lesson-card.completed {
+  border: 2px solid rgba(255, 210, 0, 0.3);
+}
+
+.lesson-card-num {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: white;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.1);
+}
+
+.lesson-card-info {
+  flex: 1;
+}
+
+.lesson-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bg-night);
+  margin-bottom: 4px;
+  font-family: var(--font-family);
+}
+
+.lesson-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lesson-type-tag {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.lesson-xp {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--accent-orange);
+}
+
+.lesson-card-score {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--grass-dark);
+  background: rgba(126, 211, 33, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.lesson-card-arrow {
+  flex-shrink: 0;
+}
+
+.unit-loading {
+  color: white;
+  font-size: 1.2rem;
+  text-align: center;
+  padding: 60px;
+}

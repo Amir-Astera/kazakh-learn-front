@@ -1,0 +1,203 @@
+/* ─── New ModulePage Layout ─── */
+.app-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  padding: 16px 24px;
+  gap: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.path-section {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 80px;
+  padding-right: 8px;
+}
+
+.units-container {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ─── Unit Block (accordion) ─── */
+.unit-block {
+  background: rgba(255,255,255,0.5);
+  border: 1px solid white;
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+}
+
+.unit-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border: none;
+  cursor: pointer;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  transition: opacity 0.15s;
+}
+.unit-header:hover { opacity: 0.95; }
+
+.unit-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.unit-header-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+}
+.unit-header-icon svg { width: 24px; height: 24px; stroke: white; fill: none; }
+
+.unit-header-info { text-align: left; }
+.unit-header-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+.unit-header-sub {
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.unit-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.unit-progress-bar { display: flex; flex-direction: column; align-items: flex-end; }
+.unit-progress-label { font-size: 0.72rem; font-weight: 700; opacity: 0.8; margin-bottom: 4px; }
+.unit-progress-track { width: 128px; height: 8px; background: rgba(0,0,0,0.2); border-radius: 99px; overflow: hidden; }
+.unit-progress-fill { height: 100%; background: white; border-radius: 99px; transition: width 0.3s; }
+
+.unit-chevron {
+  width: 24px; height: 24px;
+  stroke: white; fill: none;
+  transition: transform 0.3s;
+}
+.unit-chevron.open { transform: rotate(180deg); }
+
+/* ─── Unit Content: Path Map ─── */
+.unit-content { overflow: hidden; transition: max-height 0.4s ease; }
+.unit-content.closed { max-height: 0; }
+.unit-content.open { max-height: 2000px; }
+
+.unit-path-map {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.unit-path-bg {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ─── Lesson Nodes on the path ─── */
+.path-nodes-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.path-lesson-node {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  --node-scale: 1;
+  transform: translate(-50%, -50%) scale(var(--node-scale));
+  cursor: pointer;
+  z-index: 5;
+  transition: transform 0.2s;
+ }
+.path-lesson-node:hover { transform: translate(-50%, -50%) scale(calc(var(--node-scale) * 1.08)); }
+.path-lesson-node.locked { cursor: not-allowed; opacity: 0.85; }
+.path-lesson-node.locked:hover { transform: translate(-50%, -50%) scale(var(--node-scale)); }
+
+.node-circle {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1);
+  border: 4px solid white;
+  position: relative;
+  transition: box-shadow 0.2s;
+ }
+
+.node-circle.active { background: linear-gradient(135deg, #ef4444, #f97316); }
+.node-circle.completed { background: var(--brand-500); }
+.node-circle.locked-circle {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(4px);
+  border-color: rgba(255,255,255,0.9);
+ }
+.node-circle svg { width: 24px; height: 24px; }
+
+.node-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: #ef4444;
+  border-right-color: #ef4444;
+  animation: node-spin 3s linear infinite;
+ }
+ @keyframes node-spin { to { transform: rotate(360deg); } }
+
+.node-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: white;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+ }
+
+/* ─── Landmark images on the path ─── */
+.path-landmark-img {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+.path-landmark-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
