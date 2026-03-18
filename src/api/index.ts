@@ -73,9 +73,11 @@ export const adminDeleteUnit = (id: number) => api.delete(`/admin/units/${id}`);
 export const adminUploadUnitPathImage = (unitId: number, formData: FormData) =>
   api.post(`/admin/units/${unitId}/path-image`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 export const adminDeleteUnitPathImage = (unitId: number) => api.delete(`/admin/units/${unitId}/path-image`);
-export const adminUploadLandmark = (unitId: number, formData: FormData) =>
-  api.post(`/admin/units/${unitId}/landmark`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-export const adminDeleteLandmark = (unitId: number) => api.delete(`/admin/units/${unitId}/landmark`);
+export const adminCreateLandmark = (unitId: number, formData: FormData) =>
+  api.post(`/admin/units/${unitId}/landmarks`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const adminUpdateLandmark = (unitId: number, landmarkId: number, formData: FormData) =>
+  api.put(`/admin/units/${unitId}/landmarks/${landmarkId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+export const adminDeleteLandmark = (unitId: number, landmarkId: number) => api.delete(`/admin/units/${unitId}/landmarks/${landmarkId}`);
 
 export const adminGetLessons = (unitId?: number) =>
   api.get('/admin/lessons', { params: unitId ? { unit_id: unitId } : {} });

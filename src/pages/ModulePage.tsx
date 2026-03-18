@@ -1,12 +1,20 @@
 ﻿import { useEffect, useState, useCallback } from 'react';
 import type { CSSProperties } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getModule, getUnitLessons } from '../api';
+import { getLevels, getModule, getUnitLessons } from '../api';
+import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import './ModulePage.css';
 
 import pathGreenImg from '../assets/path-green.png';
+
+interface Landmark {
+  id: number;
+  image_url: string;
+  alt_text: string;
+  position: Point | null;
+}
 
 interface Unit {
   id: number;
@@ -22,8 +30,7 @@ interface Unit {
   path_image_url: string | null;
   path_points: Point[] | null;
   landmark_position: Point | null;
-  landmark_url: string | null;
-  landmark_alt: string | null;
+  landmarks: Landmark[];
 }
 
 interface Lesson {
@@ -34,6 +41,7 @@ interface Lesson {
   order_num: number;
   completed: boolean;
   score: number;
+  mistakes: number;
 }
 
 interface ModuleData {
@@ -43,7 +51,24 @@ interface ModuleData {
   level_code: string;
   level_name: string;
   order_num: number;
+  required_xp: number;
   units: Unit[];
+}
+
+interface LevelModule {
+  id: number;
+  title: string;
+  title_kz: string;
+  order_num: number;
+  required_xp: number;
+}
+
+interface LevelData {
+  id: number;
+  code: string;
+  name: string;
+  order_num: number;
+  modules: LevelModule[];
 }
 
 type Point = {
@@ -54,13 +79,6 @@ type Point = {
 type RoadPoint = Point & {
   tangentX: number;
   tangentY: number;
-};
-
-type LandmarkPlacement = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
 };
 
 type RoadGeometry = {
@@ -88,23 +106,8 @@ const DEFAULT_PATH_POINTS: Point[] = [
   { x: 0.73, y: 0.56 },
   { x: 0.86, y: 0.54 },
   { x: 0.95, y: 0.60 },
-  { x: 0.94, y: 0.72 },
-  { x: 0.85, y: 0.81 },
-  { x: 0.73, y: 0.83 },
-  { x: 0.67, y: 0.76 },
-  { x: 0.72, y: 0.69 },
-  { x: 0.84, y: 0.68 },
-  { x: 0.95, y: 0.79 },
-  { x: 0.90, y: 0.87 },
 ];
 
-const LANDMARK_ANCHOR_PROGRESS = [0.24, 0.54, 0.8];
-const LANDMARK_FALLBACKS: Point[] = [
-  { x: 0.88, y: 0.34 },
-  { x: 0.62, y: 0.66 },
-  { x: 0.15, y: 0.22 },
-  { x: 0.18, y: 0.56 },
-];
 const LANDMARK_SIZE = 132;
 
 function clamp(value: number, min: number, max: number) {
@@ -252,111 +255,29 @@ function getPointsOnRoad(road: RoadGeometry, count: number): RoadPoint[] {
   });
 }
 
-function getDistanceToSegment(point: Point, start: Point, end: Point) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-
-  if (lengthSquared === 0) return distance(point, start);
-
-  const t = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0, 1);
-  return distance(point, {
-    x: start.x + dx * t,
-    y: start.y + dy * t,
-  });
-}
-
-function getDistanceToRoad(road: RoadGeometry, point: Point) {
-  let minDistance = Number.POSITIVE_INFINITY;
-
-  for (let i = 1; i < road.samples.length; i++) {
-    minDistance = Math.min(minDistance, getDistanceToSegment(point, road.samples[i - 1], road.samples[i]));
-  }
-
-  return minDistance;
-}
-
-function canUseLandmarkPoint(
-  road: RoadGeometry,
-  candidate: Point,
-  lessonPoints: RoadPoint[],
-  selectedPoints: Point[]
-) {
-  if (candidate.x < 0.05 || candidate.x > 0.95 || candidate.y < 0.14 || candidate.y > 0.9) return false;
-  if (getDistanceToRoad(road, candidate) < 0.07) return false;
-  if (lessonPoints.some(point => distance(candidate, point) < 0.09)) return false;
-  if (selectedPoints.some(point => distance(candidate, point) < 0.14)) return false;
-  return true;
-}
-
-function getLandmarkPlacements(
-  road: RoadGeometry,
-  explicitPoint: Point | null,
-  seed: number,
-  lessonPoints: RoadPoint[]
-) : LandmarkPlacement[] {
-  const selectedPoints: Point[] = [];
-
-  const tryAddPoint = (candidate: Point | null | undefined) => {
-    if (!candidate) return false;
-
-    const point = normalizePoint(candidate);
-    if (!canUseLandmarkPoint(road, point, lessonPoints, selectedPoints)) return false;
-
-    selectedPoints.push(point);
-    return true;
-  };
-
-  if (explicitPoint) {
-    selectedPoints.push(normalizePoint(explicitPoint));
-  }
-
-  const orderedAnchors = LANDMARK_ANCHOR_PROGRESS.map((_, index) => {
-    const rotatedIndex = (index + seed) % LANDMARK_ANCHOR_PROGRESS.length;
-    return LANDMARK_ANCHOR_PROGRESS[rotatedIndex];
-  });
-
-  for (const progress of orderedAnchors) {
-    const anchor = getRoadPointAt(road, progress);
-    const normalX = -anchor.tangentY;
-    const normalY = anchor.tangentX;
-    const sidePriority = anchor.x >= 0.5 ? [1, -1] : [-1, 1];
-    const offsets = [0.12, 0.15, 0.18];
-    let placedForAnchor = false;
-
-    for (const side of sidePriority) {
-      for (const offset of offsets) {
-        const candidate = {
-          x: anchor.x + normalX * offset * side,
-          y: anchor.y + normalY * offset * side,
-        };
-
-        if (tryAddPoint(candidate)) {
-          placedForAnchor = true;
-          break;
-        }
-      }
-
-      if (placedForAnchor) break;
-    }
-  }
-
-  for (let i = 0; i < LANDMARK_FALLBACKS.length; i++) {
-    const candidate = LANDMARK_FALLBACKS[(i + seed) % LANDMARK_FALLBACKS.length];
-    if (selectedPoints.length >= LANDMARK_ANCHOR_PROGRESS.length) break;
-    tryAddPoint(candidate);
-  }
-
-  return selectedPoints.map(point => ({
-    x: point.x,
-    y: point.y,
-    width: LANDMARK_SIZE,
-    height: LANDMARK_SIZE,
-  }));
-}
-
 function getLessonNodeScale(count: number) {
   return clamp(1 - Math.max(0, count - 7) * 0.045, 0.72, 1);
+}
+
+function flattenModules(levels: LevelData[]) {
+  return [...levels]
+    .sort((a, b) => a.order_num - b.order_num)
+    .flatMap(level =>
+      [...level.modules]
+        .sort((a, b) => a.order_num - b.order_num)
+        .map(module => ({
+          ...module,
+          level_id: level.id,
+          level_code: level.code,
+          level_name: level.name,
+          level_order: level.order_num,
+        }))
+    );
+}
+
+function getHighestUnlockedModule(levels: LevelData[], xp: number) {
+  const modules = flattenModules(levels);
+  return modules.filter(module => (module.required_xp || 0) <= xp).at(-1) || modules[0] || null;
 }
 
 const API_BASE = 'http://localhost:5000';
@@ -372,24 +293,48 @@ const UNIT_GRADIENTS = [
 export default function ModulePage() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [moduleData, setModuleData] = useState<ModuleData | null>(null);
   const [loading, setLoading] = useState(true);
   const [openUnitId, setOpenUnitId] = useState<number | null>(null);
   const [unitLessons, setUnitLessons] = useState<Record<number, Lesson[]>>({});
 
   useEffect(() => {
-    const id = moduleId ? parseInt(moduleId) : 1;
+    const requestedId = moduleId ? parseInt(moduleId, 10) : null;
+    if (moduleId && Number.isNaN(requestedId)) {
+      navigate('/', { replace: true });
+      return;
+    }
+
     setLoading(true);
-    getModule(id)
-      .then(res => {
-        setModuleData(res.data);
-        if (res.data.units.length > 0) {
-          setOpenUnitId(res.data.units[0].id);
+    getLevels()
+      .then((levelsRes) => {
+        const levels = levelsRes.data as LevelData[];
+        const unlockedModule = getHighestUnlockedModule(levels, user?.xp || 0);
+        const flatModules = flattenModules(levels);
+        const requestedModule = requestedId ? flatModules.find(module => module.id === requestedId) || null : null;
+        const targetModuleId = requestedModule && (requestedModule.required_xp || 0) <= (user?.xp || 0)
+          ? requestedModule.id
+          : unlockedModule?.id || requestedId || 1;
+
+        if (!requestedId || targetModuleId !== requestedId) {
+          navigate(`/module/${targetModuleId}`, { replace: true });
+          return null;
+        }
+
+        return getModule(targetModuleId);
+      })
+      .then((moduleRes) => {
+        if (!moduleRes) return;
+        setModuleData(moduleRes.data);
+        setUnitLessons({});
+        if (moduleRes.data.units.length > 0) {
+          setOpenUnitId(moduleRes.data.units[0].id);
         }
       })
       .catch(err => console.error('Error loading module:', err))
       .finally(() => setLoading(false));
-  }, [moduleId]);
+  }, [moduleId, navigate, user?.xp]);
 
   const loadLessons = useCallback((unitId: number) => {
     if (unitLessons[unitId]) return;
@@ -426,15 +371,33 @@ export default function ModulePage() {
             const gradient = UNIT_GRADIENTS[idx % UNIT_GRADIENTS.length];
             const road = buildRoadGeometry(unit.path_points);
             const nodePositions = getPointsOnRoad(road, lessons.length);
-            const landmarkPlacements = unit.landmark_url
-              ? getLandmarkPlacements(road, unit.landmark_position, idx + lessons.length, nodePositions)
+            const landmarkPlacements = Array.isArray(unit.landmarks)
+              ? unit.landmarks
+                  .filter((landmark) => landmark.position && Number.isFinite(landmark.position.x) && Number.isFinite(landmark.position.y))
+                  .map((landmark) => ({
+                    id: landmark.id,
+                    image_url: landmark.image_url,
+                    alt_text: landmark.alt_text,
+                    x: clamp(Number(landmark.position?.x) || 0, 0, 1),
+                    y: clamp(Number(landmark.position?.y) || 0, 0, 1),
+                    width: LANDMARK_SIZE,
+                    height: LANDMARK_SIZE,
+                  }))
               : [];
             const nodeScale = getLessonNodeScale(lessons.length);
             const pathImageSrc = unit.path_image_url ? `${API_BASE}${unit.path_image_url}` : pathGreenImg;
+            const handleToggleUnit = () => {
+              setOpenUnitId(prev => prev === unit.id ? null : unit.id);
+            };
 
             return (
               <div className="unit-block" key={unit.id}>
-                <div className="unit-header" style={{ background: gradient }}>
+                <div className="unit-header" style={{ background: gradient }} onClick={handleToggleUnit} role="button" tabIndex={0} onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    handleToggleUnit();
+                  }
+                }}>
                   <div className="unit-header-left">
                     <div className="unit-header-icon">
                       <svg viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -453,6 +416,9 @@ export default function ModulePage() {
                         <div className="unit-progress-fill" style={{ width: `${progress}%` }} />
                       </div>
                     </div>
+                    <div aria-hidden="true" style={{ color: 'rgba(255,255,255,0.92)', fontSize: '1.2rem', fontWeight: 800, marginLeft: 14 }}>
+                      {isOpen ? '−' : '+'}
+                    </div>
                   </div>
                 </div>
 
@@ -461,9 +427,9 @@ export default function ModulePage() {
                     <img className="unit-path-bg" src={pathImageSrc} alt="" />
 
                     <div className="path-nodes-layer">
-                      {unit.landmark_url && landmarkPlacements.map((landmarkPlacement, landmarkIndex) => (
+                      {landmarkPlacements.map((landmarkPlacement, landmarkIndex) => (
                         <div
-                          key={`landmark-${unit.id}-${landmarkIndex}`}
+                          key={`landmark-${unit.id}-${landmarkPlacement.id ?? landmarkIndex}`}
                           className="path-landmark-img"
                           style={{
                             left: `${(landmarkPlacement.x * 100).toFixed(1)}%`,
@@ -472,7 +438,7 @@ export default function ModulePage() {
                             height: landmarkPlacement.height,
                           }}
                         >
-                          <img src={`${API_BASE}${unit.landmark_url}`} alt={unit.landmark_alt || ''} />
+                          <img src={`${API_BASE}${landmarkPlacement.image_url}`} alt={landmarkPlacement.alt_text || ''} />
                         </div>
                       ))}
 
@@ -482,6 +448,7 @@ export default function ModulePage() {
                         const isCompleted = lesson.completed;
                         const isLocked = li > 0 && !lessons[li - 1].completed && !lesson.completed;
                         const isActive = !isCompleted && !isLocked;
+                        const completedClass = isCompleted ? (lesson.mistakes === 0 ? 'completed' : 'completed-warning') : '';
                         const lessonNodeStyle: CSSProperties & Record<'--node-scale', string> = {
                           left: `${(pos.x * 100).toFixed(1)}%`,
                           top: `${(pos.y * 100).toFixed(1)}%`,
@@ -495,7 +462,7 @@ export default function ModulePage() {
                             style={lessonNodeStyle}
                             onClick={() => !isLocked && navigate(`/lesson/${lesson.id}`)}
                           >
-                            <div className={`node-circle ${isCompleted ? 'completed' : isActive && isFirst ? 'active' : isActive ? 'active' : 'locked-circle'}`}>
+                            <div className={`node-circle ${isCompleted ? completedClass : isActive && isFirst ? 'active' : isActive ? 'active' : 'locked-circle'}`}>
                               {isActive && isFirst && <div className="node-ring" />}
                               {isCompleted ? (
                                 <svg viewBox="0 0 24 24" fill="white" stroke="none">

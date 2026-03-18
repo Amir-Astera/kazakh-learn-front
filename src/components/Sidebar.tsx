@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getDashboard } from '../api';
+import { getDashboard, getLevels } from '../api';
 import './Sidebar.css';
 
 interface Skill {
@@ -21,6 +21,22 @@ interface Quest {
 interface Reminder {
   title: string;
   message: string;
+}
+
+interface LevelModule {
+  id: number;
+  title: string;
+  title_kz: string;
+  order_num: number;
+  required_xp: number;
+}
+
+interface LevelData {
+  id: number;
+  code: string;
+  name: string;
+  order_num: number;
+  modules: LevelModule[];
 }
 
 const skillColors: Record<string, string> = {
@@ -55,20 +71,68 @@ const skillIconPaths: Record<string, { d: string; fill: string }> = {
     d: 'M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z',
   },
 };
+ 
+ const cefrNames: Record<string, string> = {
+   A1: 'Beginner',
+   A2: 'Elementary',
+   B1: 'Intermediate',
+   B2: 'Upper-Intermediate',
+   C1: 'Advanced',
+   C2: 'Proficiency',
+ };
+ 
+ function flattenModules(levels: LevelData[]) {
+   return [...levels]
+     .sort((a, b) => a.order_num - b.order_num)
+     .flatMap(level =>
+       [...level.modules]
+         .sort((a, b) => a.order_num - b.order_num)
+         .map(module => ({
+           ...module,
+           level_id: level.id,
+           level_code: level.code,
+           level_name: level.name,
+           level_order: level.order_num,
+         }))
+     );
+ }
 
 export default function Sidebar() {
   const { user } = useAuth();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [reminder, setReminder] = useState<Reminder | null>(null);
+  const [levels, setLevels] = useState<LevelData[]>([]);
 
   useEffect(() => {
-    getDashboard().then(res => {
-      setSkills(res.data.skills);
-      setQuests(res.data.quests);
-      setReminder(res.data.reminder);
+    Promise.all([getDashboard(), getLevels()]).then(([dashboardRes, levelsRes]) => {
+      setSkills(dashboardRes.data.skills);
+      setQuests(dashboardRes.data.quests);
+      setReminder(dashboardRes.data.reminder);
+      setLevels(levelsRes.data);
     }).catch(() => {});
   }, []);
+
+  const xp = user?.xp || 0;
+  const allModules = flattenModules(levels);
+  const currentUnlockedModule = allModules.filter(module => (module.required_xp || 0) <= xp).at(-1) || allModules[0] || null;
+  const currentLevel = currentUnlockedModule
+    ? levels.find(level => level.id === currentUnlockedModule.level_id) || null
+    : levels[0] || null;
+  const nextLevel = currentLevel
+    ? [...levels].sort((a, b) => a.order_num - b.order_num).find(level => level.order_num > currentLevel.order_num) || null
+    : null;
+  const currentLevelFloor = currentLevel && currentLevel.modules.length > 0
+    ? Math.min(...currentLevel.modules.map(module => module.required_xp || 0))
+    : 0;
+  const nextLevelRequirement = nextLevel && nextLevel.modules.length > 0
+    ? Math.min(...nextLevel.modules.map(module => module.required_xp || 0))
+    : null;
+  const xpBarWidth = nextLevelRequirement == null
+    ? 100
+    : Math.min(100, Math.max(0, ((xp - currentLevelFloor) / Math.max(1, nextLevelRequirement - currentLevelFloor)) * 100));
+  const currentLevelCode = currentLevel?.code || 'A1';
+  const currentLevelName = cefrNames[currentLevelCode] || currentLevel?.name || 'Beginner';
 
   return (
     <aside className="dashboard-section">
@@ -79,17 +143,21 @@ export default function Sidebar() {
             <div className="user-card-avatar">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
-            <div className="user-card-level-badge">A1</div>
+            <div className="user-card-level-badge">{currentLevelCode}</div>
           </div>
           <div>
-            <h2 className="user-card-name">Beginner</h2>
-            <p className="user-card-sub">Уровень CEFR: A1</p>
+            <h2 className="user-card-name">{currentLevelName}</h2>
+            <p className="user-card-sub">Уровень CEFR: {currentLevelCode}{currentLevel?.name ? ` • ${currentLevel.name}` : ''}</p>
           </div>
         </div>
         <div className="user-xp-bar">
-          <div className="user-xp-fill" style={{ width: `${Math.min(100, ((user?.xp || 0) / 400) * 100)}%` }} />
+          <div className="user-xp-fill" style={{ width: `${xpBarWidth}%` }} />
         </div>
-        <p className="user-xp-label">{user?.xp || 0} / 400 XP до A2</p>
+        <p className="user-xp-label">
+          {nextLevelRequirement == null
+            ? `${xp} XP • максимальный уровень открыт`
+            : `${xp} / ${nextLevelRequirement} XP до ${nextLevel?.code}`}
+        </p>
       </div>
 
       {/* Smart reminder */}

@@ -226,6 +226,16 @@
   background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,247,237,0.95));
 }
 
+.lesson-card.completed.perfect {
+  border-color: rgba(34, 197, 94, 0.32);
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(240,253,244,0.98));
+}
+
+.lesson-card.completed.with-mistakes {
+  border-color: rgba(245, 158, 11, 0.32);
+  background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(255,247,237,0.95));
+}
+
 .lesson-card-left,
 .lesson-card-right,
 .lesson-card-title-row {

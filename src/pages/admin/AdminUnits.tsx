@@ -2,13 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import AdminLayout from './AdminLayout';
 import {
   adminGetUnits, adminCreateUnit, adminUpdateUnit, adminDeleteUnit,
-  adminGetModules, adminUploadLandmark, adminDeleteLandmark
+  adminGetModules, adminCreateLandmark, adminUpdateLandmark, adminDeleteLandmark
 } from '../../api';
 import UnitPathLayoutEditor from '../../components/admin/UnitPathLayoutEditor';
 import pathGreenImg from '../../assets/path-green.png';
 
 interface Module { id: number; title: string; level_code: string; }
 interface Point { x: number; y: number; }
+interface Landmark {
+  id: number;
+  image_url: string;
+  alt_text: string;
+  position: Point | null;
+}
 interface Unit {
   id: number; module_id: number; module_title: string;
   title: string; title_kz: string; subtitle: string;
@@ -16,7 +22,7 @@ interface Unit {
   path_image_url: string | null;
   path_points: Point[] | null;
   landmark_position: Point | null;
-  image_url: string | null; alt_text: string | null;
+  landmarks: Landmark[];
 }
 
 const ICONS = ['book','alphabet','wave','numbers','family','food','directions','chat','people','clock','description','sentence','shop','transport','health'];
@@ -35,6 +41,7 @@ export default function AdminUnits() {
 
   const [lmModal, setLmModal]   = useState(false);
   const [lmUnit, setLmUnit]     = useState<Unit | null>(null);
+  const [lmEditing, setLmEditing] = useState<Landmark | null>(null);
   const [lmFile, setLmFile]     = useState<File | null>(null);
   const [lmAlt, setLmAlt]       = useState('');
   const [lmPreview, setLmPreview] = useState<string | null>(null);
@@ -71,14 +78,18 @@ export default function AdminUnits() {
     await adminDeleteUnit(id); load();
   };
 
-  const openLandmark = (u: Unit) => {
+  const openLandmark = (u: Unit, landmark?: Landmark) => {
     setLmUnit(u);
+    setLmEditing(landmark || null);
     setLmFile(null);
-    setLmAlt(u.alt_text || '');
-    setLmPreview(u.image_url ? `${API_BASE}${u.image_url}` : null);
+    setLmAlt(landmark?.alt_text || '');
+    setLmPreview(landmark?.image_url ? `${API_BASE}${landmark.image_url}` : null);
     setLmModal(true);
   };
-  const closeLm = () => setLmModal(false);
+  const closeLm = () => {
+    setLmModal(false);
+    setLmEditing(null);
+  };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -89,27 +100,24 @@ export default function AdminUnits() {
 
   const saveLandmark = async () => {
     if (!lmUnit) return;
-    if (!lmFile && !lmUnit.image_url) { alert('Выберите изображение'); return; }
     if (!lmAlt.trim()) { alert('Введите описание достопримечательности'); return; }
+    if (!lmEditing && !lmFile) { alert('Выберите изображение'); return; }
     setLmSaving(true);
     try {
-      if (lmFile) {
-        const fd = new FormData();
-        fd.append('image', lmFile);
-        fd.append('alt_text', lmAlt);
-        await adminUploadLandmark(lmUnit.id, fd);
-      } else if (lmAlt !== lmUnit.alt_text) {
-        const fd = new FormData();
-        fd.append('alt_text', lmAlt);
-        await adminUploadLandmark(lmUnit.id, fd);
-      }
+      const fd = new FormData();
+      fd.append('alt_text', lmAlt);
+      if (lmFile) fd.append('image', lmFile);
+
+      if (lmEditing) await adminUpdateLandmark(lmUnit.id, lmEditing.id, fd);
+      else await adminCreateLandmark(lmUnit.id, fd);
+
       load(); closeLm();
     } finally { setLmSaving(false); }
   };
 
-  const removeLandmark = async (u: Unit) => {
+  const removeLandmark = async (u: Unit, landmarkId: number) => {
     if (!confirm('Удалить достопримечательность?')) return;
-    await adminDeleteLandmark(u.id); load();
+    await adminDeleteLandmark(u.id, landmarkId); load();
   };
 
   return (
@@ -143,23 +151,27 @@ export default function AdminUnits() {
                     <span className={`admin-badge ${u.path_points?.length ? 'admin-badge-green' : 'admin-badge-red'}`}>
                       {u.path_points?.length ? `${u.path_points.length} точек` : 'Нет пути'}
                     </span>
-                    {u.landmark_position && <span className="admin-badge admin-badge-blue">landmark</span>}
+                    {u.landmarks?.length > 0 && <span className="admin-badge admin-badge-blue">{u.landmarks.length} landmark</span>}
                     {u.path_image_url && <span className="admin-badge admin-badge-purple">своя карта</span>}
                   </div>
                 </td>
                 <td>
-                  {u.image_url ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <img src={`${API_BASE}${u.image_url}`} alt={u.alt_text || ''} style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 6 }} />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.alt_text}</span>
-                      <button className="btn-admin-edit" onClick={() => openLandmark(u)}>Изм.</button>
-                      <button className="btn-admin-danger" onClick={() => removeLandmark(u)}>✕</button>
-                    </div>
-                  ) : (
-                    <button className="btn-admin-primary" style={{ fontSize: '0.75rem', padding: '5px 10px' }} onClick={() => openLandmark(u)}>
+                  <div style={{ display: 'grid', gap: 8, minWidth: 220 }}>
+                    {u.landmarks?.map((landmark) => (
+                      <div key={landmark.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <img src={`${API_BASE}${landmark.image_url}`} alt={landmark.alt_text || ''} style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 6 }} />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{landmark.alt_text}</div>
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{landmark.position ? 'точка задана' : 'без точки'}</div>
+                        </div>
+                        <button className="btn-admin-edit" onClick={() => openLandmark(u, landmark)}>Изм.</button>
+                        <button className="btn-admin-danger" onClick={() => removeLandmark(u, landmark.id)}>✕</button>
+                      </div>
+                    ))}
+                    <button className="btn-admin-primary" style={{ fontSize: '0.75rem', padding: '5px 10px', justifyContent: 'center' }} onClick={() => openLandmark(u)}>
                       + Добавить
                     </button>
-                  )}
+                  </div>
                 </td>
                 <td>{u.order_num}</td>
                 <td><div className="actions">
@@ -212,7 +224,7 @@ export default function AdminUnits() {
         <div className="admin-modal-backdrop" onClick={closeLm}>
           <div className="admin-modal" onClick={e => e.stopPropagation()}>
             <div className="admin-modal-title">
-              Достопримечательность — <span style={{ color: 'var(--bg-sky)' }}>{lmUnit.title_kz || lmUnit.title}</span>
+              {lmEditing ? 'Редактировать достопримечательность' : 'Новая достопримечательность'} — <span style={{ color: 'var(--bg-sky)' }}>{lmUnit.title_kz || lmUnit.title}</span>
             </div>
             <div className="admin-form">
               <div className="admin-field">
@@ -224,7 +236,7 @@ export default function AdminUnits() {
                       <img src={lmPreview} alt="" />
                       <div>
                         <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--bg-night)' }}>
-                          {lmFile ? lmFile.name : 'Текущее изображение'}
+                          {lmFile ? lmFile.name : lmEditing ? 'Текущее изображение' : 'Новое изображение'}
                         </div>
                         <div className="landmark-preview-name">Нажмите чтобы заменить</div>
                       </div>

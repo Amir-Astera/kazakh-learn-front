@@ -62,7 +62,7 @@ function LessonShell({ badge, title, subtitle, children }: LessonShellProps) {
   return (
     <div className="lesson-page">
       <svg className="lesson-bg-wave" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <path d="M 0 0 L 58 0 C 84 5 24 35 50 100 L 0 100 Z" fill="#4285F4" />
+        <path d="M 0 0 L 58 0 C 84 5 24 35 50 100 L 0 100 Z" fill="#22c55e" />
       </svg>
 
       <div className="lesson-panel-left">

@@ -4,7 +4,7 @@ import { register } from '../api';
 import { useAuth } from '../context/AuthContext';
 import './AuthPage.css';
 
-import mascotImg from '../assets/mascot.png';
+import mascotImg from '../assets/ChatGPT Image 6 мар. 2026 г., 23_45_55.png';
 import violinImg from '../assets/deco-violin.png';
 import bookImg from '../assets/deco-book.png';
 import yurtImg from '../assets/deco-yurt.png';
@@ -39,7 +39,7 @@ export default function RegisterPage() {
     <div className="auth-page">
       {/* Full-page blue S-wave background — blue on RIGHT (mirrored) */}
       <svg className="auth-bg-wave" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <path d="M 100 0 L 42 0 C 16 5 76 35 50 100 L 100 100 Z" fill="#4285F4" />
+        <path d="M 100 0 L 42 0 C 16 5 76 35 50 100 L 100 100 Z" fill="#22c55e" />
       </svg>
 
       {/* Mascot — sits on white area (left) */}

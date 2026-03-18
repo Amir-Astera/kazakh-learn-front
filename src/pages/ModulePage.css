@@ -156,6 +156,7 @@
 
 .node-circle.active { background: linear-gradient(135deg, #ef4444, #f97316); }
 .node-circle.completed { background: var(--brand-500); }
+.node-circle.completed-warning { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
 .node-circle.locked-circle {
   background: rgba(255,255,255,0.85);
   backdrop-filter: blur(4px);

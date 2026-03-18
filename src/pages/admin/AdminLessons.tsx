@@ -5,9 +5,9 @@ import { adminGetLessons, adminCreateLesson, adminUpdateLesson, adminDeleteLesso
 interface Unit { id: number; title_kz: string; title: string; module_title: string; }
 interface Lesson { id: number; unit_id: number; unit_title: string; title: string; type: string; xp_reward: number; order_num: number; }
 
-const TYPES = ['translation','choice','sentence','listening','speaking'];
-const TYPE_LABELS: Record<string,string> = { translation:'Перевод', choice:'Выбор', sentence:'Предложение', listening:'Аудирование', speaking:'Произношение' };
-const TYPE_COLORS: Record<string,string> = { translation:'admin-badge-blue', choice:'admin-badge-green', sentence:'admin-badge-orange', listening:'admin-badge-purple', speaking:'admin-badge-blue' };
+const TYPES = ['translation','choice','grammar','sentence','listening','speaking'];
+const TYPE_LABELS: Record<string,string> = { translation:'Перевод', choice:'Выбор', grammar:'Грамматика', sentence:'Предложение', listening:'Аудирование', speaking:'Произношение' };
+const TYPE_COLORS: Record<string,string> = { translation:'admin-badge-blue', choice:'admin-badge-green', grammar:'admin-badge-purple', sentence:'admin-badge-orange', listening:'admin-badge-purple', speaking:'admin-badge-blue' };
 
 const empty = { unit_id: 1, title: '', type: 'translation', xp_reward: 10, order_num: 1 };
 

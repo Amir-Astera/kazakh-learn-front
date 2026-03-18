@@ -12,6 +12,7 @@ interface Lesson {
   order_num: number;
   completed: boolean;
   score: number;
+  mistakes: number;
 }
 
 export default function UnitPage() {
@@ -31,6 +32,7 @@ export default function UnitPage() {
   const typeLabels: Record<string, string> = {
     translation: 'Перевод',
     choice: 'Выбор ответа',
+    grammar: 'Грамматика',
     sentence: 'Составление',
     listening: 'Аудирование',
     speaking: 'Произношение',
@@ -39,6 +41,7 @@ export default function UnitPage() {
   const typeColors: Record<string, string> = {
     translation: 'var(--blue-500)',
     choice: 'var(--brand-500)',
+    grammar: 'var(--violet-500)',
     sentence: 'var(--orange-500)',
     listening: 'var(--violet-500)',
     speaking: 'var(--red-500)',
@@ -128,18 +131,25 @@ export default function UnitPage() {
           {lessons.map((lesson, index) => {
             const isLocked = index > 0 && !lessons[index - 1].completed && !lesson.completed;
             const isNext = !lesson.completed && !isLocked;
+            const completionTone = lesson.completed ? (lesson.mistakes === 0 ? 'perfect' : 'with-mistakes') : '';
             
             return (
               <button
                 key={lesson.id}
                 type="button"
-                className={`lesson-card ${lesson.completed ? 'completed' : ''} ${isLocked ? 'locked' : ''}`}
+                className={`lesson-card ${lesson.completed ? `completed ${completionTone}` : ''} ${isLocked ? 'locked' : ''}`}
                 onClick={() => !isLocked && navigate(`/lesson/${lesson.id}`)}
                 disabled={isLocked}
               >
                 <div className="lesson-card-left">
                   <div className="lesson-card-num" style={{
-                    background: lesson.completed ? 'var(--amber-500)' : isLocked ? 'rgba(148,163,184,0.24)' : typeColors[lesson.type] || 'var(--blue-500)'
+                    background: lesson.completed
+                      ? lesson.mistakes === 0
+                        ? 'var(--brand-500)'
+                        : 'var(--amber-500)'
+                      : isLocked
+                        ? 'rgba(148,163,184,0.24)'
+                        : typeColors[lesson.type] || 'var(--blue-500)'
                 }}>
                     {lesson.completed ? (
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
@@ -171,7 +181,7 @@ export default function UnitPage() {
 
                 <div className="lesson-card-right">
                   {lesson.completed && (
-                    <div className="lesson-card-score">{lesson.score}%</div>
+                    <div className={`lesson-card-score ${completionTone}`}>{lesson.score}%</div>
                   )}
                   {!lesson.completed && !isLocked && (
                     <div className="lesson-card-arrow">

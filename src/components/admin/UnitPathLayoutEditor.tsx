@@ -12,6 +12,13 @@ type Point = {
   y: number;
 };
 
+type LandmarkItem = {
+  id: number;
+  image_url: string;
+  alt_text: string;
+  position: Point | null;
+};
+
 type LayoutUnit = {
   id: number;
   title: string;
@@ -19,11 +26,12 @@ type LayoutUnit = {
   path_image_url: string | null;
   path_points: Point[] | null;
   landmark_position: Point | null;
+  landmarks: LandmarkItem[];
 };
 
 type DragState =
   | { type: 'path'; index: number }
-  | { type: 'landmark' }
+  | { type: 'landmark'; id: number }
   | null;
 
 type Props = {
@@ -53,7 +61,8 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
   const fileRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'path' | 'landmark'>('path');
   const [points, setPoints] = useState<Point[]>([]);
-  const [landmarkPoint, setLandmarkPoint] = useState<Point | null>(null);
+  const [landmarks, setLandmarks] = useState<LandmarkItem[]>([]);
+  const [activeLandmarkId, setActiveLandmarkId] = useState<number | null>(null);
   const [previewSrc, setPreviewSrc] = useState(defaultImageSrc);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState<DragState>(null);
@@ -66,7 +75,14 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
 
     setMode('path');
     setPoints(Array.isArray(unit.path_points) ? unit.path_points.map(normalizePoint) : []);
-    setLandmarkPoint(unit.landmark_position ? normalizePoint(unit.landmark_position) : null);
+    const normalizedLandmarks = Array.isArray(unit.landmarks)
+      ? unit.landmarks.map((landmark) => ({
+          ...landmark,
+          position: landmark.position ? normalizePoint(landmark.position) : null,
+        }))
+      : [];
+    setLandmarks(normalizedLandmarks);
+    setActiveLandmarkId(normalizedLandmarks[0]?.id ?? null);
     setPreviewSrc(unit.path_image_url ? `${API_BASE}${unit.path_image_url}` : defaultImageSrc);
     setImageFile(null);
     setDragging(null);
@@ -86,7 +102,7 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
         return;
       }
 
-      setLandmarkPoint(point);
+      setLandmarks(prev => prev.map((landmark) => landmark.id === dragging.id ? { ...landmark, position: point } : landmark));
     };
 
     const handleMouseUp = () => setDragging(null);
@@ -122,7 +138,8 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
     if (!point) return;
 
     if (mode === 'landmark') {
-      setLandmarkPoint(point);
+      if (activeLandmarkId == null) return;
+      setLandmarks(prev => prev.map((landmark) => landmark.id === activeLandmarkId ? { ...landmark, position: point } : landmark));
       return;
     }
 
@@ -172,7 +189,11 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
 
       await adminUpdateUnitLayout(unit.id, {
         path_points: points.length >= 2 ? points.map(normalizePoint) : null,
-        landmark_position: landmarkPoint ? normalizePoint(landmarkPoint) : null,
+        landmark_position: null,
+        landmarks: landmarks.map((landmark) => ({
+          id: landmark.id,
+          position: landmark.position ? normalizePoint(landmark.position) : null,
+        })),
       });
 
       onSaved();
@@ -206,7 +227,7 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
                 Точки пути
               </button>
               <button type="button" className={mode === 'landmark' ? 'btn-admin-primary' : 'btn-admin-edit'} onClick={() => setMode('landmark')}>
-                Точка landmark
+                Точки landmarks
               </button>
               <button type="button" className="btn-admin-edit" onClick={() => setPoints(prev => prev.slice(0, -1))} disabled={points.length === 0}>
                 Удалить последнюю
@@ -217,8 +238,13 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
               <button type="button" className="btn-admin-danger" onClick={() => setPoints([])} disabled={points.length === 0}>
                 Очистить путь
               </button>
-              <button type="button" className="btn-admin-edit" onClick={() => setLandmarkPoint(null)} disabled={!landmarkPoint}>
-                Убрать landmark
+              <button
+                type="button"
+                className="btn-admin-edit"
+                onClick={() => activeLandmarkId != null && setLandmarks(prev => prev.map((landmark) => landmark.id === activeLandmarkId ? { ...landmark, position: null } : landmark))}
+                disabled={activeLandmarkId == null || !landmarks.find((landmark) => landmark.id === activeLandmarkId)?.position}
+              >
+                Убрать точку landmark
               </button>
             </div>
 
@@ -287,36 +313,38 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
                 </button>
               ))}
 
-              {landmarkPoint && (
+              {landmarks.map((landmark, index) => landmark.position ? (
                 <button
+                  key={`landmark-point-${landmark.id}`}
                   type="button"
                   onMouseDown={event => {
                     event.preventDefault();
                     event.stopPropagation();
-                    setDragging({ type: 'landmark' });
+                    setActiveLandmarkId(landmark.id);
+                    setDragging({ type: 'landmark', id: landmark.id });
                   }}
                   style={{
                     position: 'absolute',
-                    left: `${landmarkPoint.x * 100}%`,
-                    top: `${landmarkPoint.y * 100}%`,
+                    left: `${landmark.position.x * 100}%`,
+                    top: `${landmark.position.y * 100}%`,
                     width: 34,
                     height: 34,
                     borderRadius: 10,
-                    border: '2px solid white',
+                    border: activeLandmarkId === landmark.id ? '3px solid #fef08a' : '2px solid white',
                     background: '#0ea5e9',
                     color: 'white',
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: 800,
                     transform: 'translate(-50%, -50%)',
                     boxShadow: '0 6px 16px rgba(14, 165, 233, 0.35)',
                     zIndex: 4,
                     cursor: 'grab',
                   }}
-                  title={`Landmark: ${formatPoint(landmarkPoint)}`}
+                  title={`${landmark.alt_text}: ${formatPoint(landmark.position)}`}
                 >
-                  ★
+                  {index + 1}
                 </button>
-              )}
+              ) : null)}
             </div>
           </div>
 
@@ -360,7 +388,7 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
                 <br />
                 4. Если начали ставить точки не с той стороны, нажмите «Развернуть путь».
                 <br />
-                5. Выберите режим «Точка landmark» и поставьте место для достопримечательности.
+                5. Выберите режим «Точки landmarks», затем выберите достопримечательность справа и поставьте её точку на карте.
                 <br />
                 6. На модуле уроки будут распределяться автоматически от первой точки до последней по длине пути.
               </div>
@@ -416,9 +444,28 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
             </div>
 
             <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14, background: '#f8fafc' }}>
-              <div style={{ fontWeight: 800, color: 'var(--bg-night)', marginBottom: 6 }}>Landmark</div>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                {landmarkPoint ? formatPoint(landmarkPoint) : 'Точка не выбрана'}
+              <div style={{ fontWeight: 800, color: 'var(--bg-night)', marginBottom: 10 }}>Landmarks</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {landmarks.map((landmark) => (
+                  <button
+                    key={landmark.id}
+                    type="button"
+                    className={activeLandmarkId === landmark.id ? 'btn-admin-primary' : 'btn-admin-edit'}
+                    style={{ justifyContent: 'space-between' }}
+                    onClick={() => {
+                      setMode('landmark');
+                      setActiveLandmarkId(landmark.id);
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{landmark.alt_text}</span>
+                    <span style={{ fontSize: '0.72rem' }}>{landmark.position ? formatPoint(landmark.position) : 'без точки'}</span>
+                  </button>
+                ))}
+                {landmarks.length === 0 && (
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    Сначала добавьте достопримечательности в разделе «Разделы».
+                  </div>
+                )}
               </div>
             </div>
 

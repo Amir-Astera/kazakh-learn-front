@@ -4,7 +4,7 @@ import { login } from '../api';
 import { useAuth } from '../context/AuthContext';
 import './AuthPage.css';
 
-import mascotImg from '../assets/mascot.png';
+import mascotImg from '../assets/ChatGPT Image 6 мар. 2026 г., 23_45_55.png';
 import violinImg from '../assets/deco-violin.png';
 import bookImg from '../assets/deco-book.png';
 import yurtImg from '../assets/deco-yurt.png';
@@ -38,7 +38,7 @@ export default function LoginPage() {
     <div className="auth-page">
       {/* Full-page blue S-wave background — blue on LEFT */}
       <svg className="auth-bg-wave" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <path d="M 0 0 L 58 0 C 84 5 24 35 50 100 L 0 100 Z" fill="#4285F4" />
+        <path d="M 0 0 L 58 0 C 84 5 24 35 50 100 L 0 100 Z" fill="#22c55e" />
       </svg>
 
       {/* Form — sits on top of blue area */}
