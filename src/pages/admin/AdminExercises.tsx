@@ -67,6 +67,11 @@ export default function AdminExercises() {
   };
 
   const needsOptions = form.type === 'choice' || form.type === 'translation';
+  const exerciseHint = form.type === 'speaking'
+    ? 'Для произношения в поле «Правильный ответ» укажите слово или фразу, которую ученик должен произнести.'
+    : needsOptions
+      ? 'Добавьте варианты ответа JSON-массивом и выберите один правильный ответ.'
+      : 'Заполните вопрос и правильный ответ для этого типа задания.';
 
   return (
     <AdminLayout title="Задания">
@@ -128,15 +133,25 @@ export default function AdminExercises() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="admin-field"><label>Тип задания</label>
-                  <select value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                  <select value={form.type} onChange={e => setForm(prev => ({
+                    ...prev,
+                    type: e.target.value,
+                    options: e.target.value === 'choice' || e.target.value === 'translation'
+                      ? (prev.options.trim() ? prev.options : '["Вариант 1","Вариант 2","Вариант 3","Вариант 4"]')
+                      : ''
+                  }))}>
                     {TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
                   </select></div>
                 <div className="admin-field"><label>Порядок</label>
                   <input type="number" value={form.order_num} onChange={e => setForm({...form, order_num: +e.target.value})} /></div>
               </div>
 
+              <div style={{ fontSize: '0.77rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: -4 }}>
+                {exerciseHint}
+              </div>
+
               <div className="admin-field"><label>Вопрос / Задание</label>
-                <textarea value={form.question} onChange={e => setForm({...form, question: e.target.value})} placeholder='Переведите: "Привет"' /></div>
+                <textarea value={form.question} onChange={e => setForm({...form, question: e.target.value})} placeholder={form.type === 'speaking' ? 'Произнесите: "Сәлеметсіз бе"' : 'Переведите: "Привет"'} /></div>
 
               {needsOptions && (
                 <div className="admin-field">
@@ -147,7 +162,7 @@ export default function AdminExercises() {
               )}
 
               <div className="admin-field"><label>Правильный ответ</label>
-                <input value={form.correct_answer} onChange={e => setForm({...form, correct_answer: e.target.value})} placeholder="Сәлем" /></div>
+                <input value={form.correct_answer} onChange={e => setForm({...form, correct_answer: e.target.value})} placeholder={form.type === 'speaking' ? 'Сәлеметсіз бе' : 'Сәлем'} /></div>
 
               <div className="admin-field"><label>Пояснение (необязательно)</label>
                 <input value={form.explanation} onChange={e => setForm({...form, explanation: e.target.value})} placeholder="Сәлем — приветствие в казахском языке" /></div>

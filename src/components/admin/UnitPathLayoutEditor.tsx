@@ -58,6 +58,8 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState<DragState>(null);
   const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  const [saveTone, setSaveTone] = useState<'success' | 'error' | 'info'>('info');
 
   useEffect(() => {
     if (!unit) return;
@@ -68,6 +70,8 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
     setPreviewSrc(unit.path_image_url ? `${API_BASE}${unit.path_image_url}` : defaultImageSrc);
     setImageFile(null);
     setDragging(null);
+    setSaveMessage('');
+    setSaveTone('info');
   }, [unit, defaultImageSrc]);
 
   useEffect(() => {
@@ -131,6 +135,8 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
 
     setImageFile(file);
     setPreviewSrc(URL.createObjectURL(file));
+    setSaveMessage('Новая карта выбрана. Нажмите «Сохранить разметку», чтобы применить изменения.');
+    setSaveTone('info');
   };
 
   const handleRemovePathImage = async () => {
@@ -144,10 +150,19 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
     setImageFile(null);
     setPreviewSrc(defaultImageSrc);
     onSaved();
+    setSaveMessage('Пользовательская картинка пути удалена. Сохранение разметки для точек не требуется.');
+    setSaveTone('success');
   };
 
   const handleSave = async () => {
+    if (points.length === 1) {
+      setSaveMessage('Для дороги нужно минимум 2 точки. Либо добавьте ещё одну, либо удалите единственную точку и сохраните только landmark.');
+      setSaveTone('error');
+      return;
+    }
+
     setSaving(true);
+    setSaveMessage('');
     try {
       if (imageFile) {
         const formData = new FormData();
@@ -156,16 +171,22 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
       }
 
       await adminUpdateUnitLayout(unit.id, {
-        path_points: points,
-        landmark_position: landmarkPoint,
+        path_points: points.length >= 2 ? points.map(normalizePoint) : null,
+        landmark_position: landmarkPoint ? normalizePoint(landmarkPoint) : null,
       });
 
       onSaved();
-      onClose();
+      setSaveMessage('Разметка сохранена. Точка №1 — это старт движения уроков, последняя точка — финиш.');
+      setSaveTone('success');
+    } catch (error: any) {
+      setSaveMessage(error?.response?.data?.error || 'Не удалось сохранить разметку. Проверьте соединение и попробуйте снова.');
+      setSaveTone('error');
     } finally {
       setSaving(false);
     }
   };
+
+  const canSaveLayout = !saving && points.length !== 1;
 
   return (
     <div className="admin-modal-backdrop" onClick={onClose}>
@@ -189,6 +210,9 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
               </button>
               <button type="button" className="btn-admin-edit" onClick={() => setPoints(prev => prev.slice(0, -1))} disabled={points.length === 0}>
                 Удалить последнюю
+              </button>
+              <button type="button" className="btn-admin-edit" onClick={() => setPoints(prev => [...prev].reverse())} disabled={points.length < 2}>
+                Развернуть путь
               </button>
               <button type="button" className="btn-admin-danger" onClick={() => setPoints([])} disabled={points.length === 0}>
                 Очистить путь
@@ -332,11 +356,32 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
                 <br />
                 2. Если нужно, перетяните точку мышкой.
                 <br />
-                3. Выберите режим «Точка landmark» и поставьте место для достопримечательности.
+                3. Номер на точке — это не номер урока, а порядок маршрута: 1 = старт, последняя точка = финиш.
                 <br />
-                4. На модуле уроки будут распределяться автоматически от первой точки до последней по длине пути.
+                4. Если начали ставить точки не с той стороны, нажмите «Развернуть путь».
+                <br />
+                5. Выберите режим «Точка landmark» и поставьте место для достопримечательности.
+                <br />
+                6. На модуле уроки будут распределяться автоматически от первой точки до последней по длине пути.
               </div>
             </div>
+
+            {saveMessage && (
+              <div
+                style={{
+                  borderRadius: 14,
+                  padding: '12px 14px',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  lineHeight: 1.5,
+                  background: saveTone === 'success' ? 'rgba(16, 185, 129, 0.1)' : saveTone === 'error' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.08)',
+                  border: saveTone === 'success' ? '1px solid rgba(16, 185, 129, 0.25)' : saveTone === 'error' ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(59, 130, 246, 0.2)',
+                  color: saveTone === 'success' ? '#047857' : saveTone === 'error' ? '#b91c1c' : '#1d4ed8',
+                }}
+              >
+                {saveMessage}
+              </div>
+            )}
 
             <div style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -379,7 +424,7 @@ export default function UnitPathLayoutEditor({ unit, defaultImageSrc, onClose, o
 
             <div className="admin-form-actions">
               <button type="button" className="btn-admin-cancel" onClick={onClose}>Отмена</button>
-              <button type="button" className="btn-admin-primary" onClick={handleSave} disabled={saving || points.length < 2}>
+              <button type="button" className="btn-admin-primary" onClick={handleSave} disabled={!canSaveLayout}>
                 {saving ? 'Сохранение...' : 'Сохранить разметку'}
               </button>
             </div>

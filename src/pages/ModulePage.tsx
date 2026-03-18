@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState, useCallback } from 'react';
+import type { CSSProperties } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getModule, getUnitLessons } from '../api';
 import Sidebar from '../components/Sidebar';
@@ -70,35 +71,31 @@ type RoadGeometry = {
 };
 
 const DEFAULT_PATH_POINTS: Point[] = [
-  { x: 0.79, y: 0.90 },
-  { x: 0.76, y: 0.87 },
-  { x: 0.77, y: 0.81 },
-  { x: 0.82, y: 0.76 },
-  { x: 0.89, y: 0.71 },
-  { x: 0.93, y: 0.64 },
-  { x: 0.92, y: 0.56 },
-  { x: 0.88, y: 0.50 },
-  { x: 0.81, y: 0.46 },
-  { x: 0.73, y: 0.43 },
-  { x: 0.65, y: 0.44 },
-  { x: 0.58, y: 0.48 },
-  { x: 0.52, y: 0.53 },
-  { x: 0.47, y: 0.56 },
-  { x: 0.42, y: 0.55 },
-  { x: 0.39, y: 0.51 },
-  { x: 0.41, y: 0.46 },
-  { x: 0.46, y: 0.42 },
-  { x: 0.49, y: 0.37 },
-  { x: 0.46, y: 0.32 },
-  { x: 0.38, y: 0.30 },
-  { x: 0.29, y: 0.30 },
-  { x: 0.20, y: 0.34 },
-  { x: 0.11, y: 0.41 },
-  { x: 0.06, y: 0.51 },
-  { x: 0.07, y: 0.62 },
-  { x: 0.14, y: 0.70 },
-  { x: 0.24, y: 0.75 },
-  { x: 0.33, y: 0.77 },
+  { x: 0.04, y: 0.74 },
+  { x: 0.09, y: 0.67 },
+  { x: 0.17, y: 0.60 },
+  { x: 0.28, y: 0.56 },
+  { x: 0.39, y: 0.58 },
+  { x: 0.44, y: 0.66 },
+  { x: 0.38, y: 0.76 },
+  { x: 0.28, y: 0.83 },
+  { x: 0.17, y: 0.82 },
+  { x: 0.13, y: 0.73 },
+  { x: 0.21, y: 0.66 },
+  { x: 0.33, y: 0.63 },
+  { x: 0.47, y: 0.63 },
+  { x: 0.60, y: 0.62 },
+  { x: 0.73, y: 0.56 },
+  { x: 0.86, y: 0.54 },
+  { x: 0.95, y: 0.60 },
+  { x: 0.94, y: 0.72 },
+  { x: 0.85, y: 0.81 },
+  { x: 0.73, y: 0.83 },
+  { x: 0.67, y: 0.76 },
+  { x: 0.72, y: 0.69 },
+  { x: 0.84, y: 0.68 },
+  { x: 0.95, y: 0.79 },
+  { x: 0.90, y: 0.87 },
 ];
 
 const LANDMARK_ANCHOR_PROGRESS = [0.24, 0.54, 0.8];
@@ -108,6 +105,7 @@ const LANDMARK_FALLBACKS: Point[] = [
   { x: 0.15, y: 0.22 },
   { x: 0.18, y: 0.56 },
 ];
+const LANDMARK_SIZE = 132;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -128,6 +126,15 @@ function normalizePoint(point: Point): Point {
   };
 }
 
+function getEdgeAverageX(points: Point[]) {
+  const edgeSize = Math.max(1, Math.min(5, Math.floor(points.length / 3) || 1));
+  const start = points.slice(0, edgeSize);
+  const end = points.slice(-edgeSize);
+  const startAverage = start.reduce((sum, point) => sum + point.x, 0) / start.length;
+  const endAverage = end.reduce((sum, point) => sum + point.x, 0) / end.length;
+  return endAverage - startAverage;
+}
+
 function getPathPoints(pathPoints: Point[] | null | undefined) {
   if (!Array.isArray(pathPoints)) return DEFAULT_PATH_POINTS;
 
@@ -136,6 +143,10 @@ function getPathPoints(pathPoints: Point[] | null | undefined) {
     .map(normalizePoint);
 
   return normalized.length >= 2 ? normalized : DEFAULT_PATH_POINTS;
+}
+
+function isRoadFlowLeftToRight(road: RoadGeometry) {
+  return getEdgeAverageX(road.points) >= 0;
 }
 
 function getCatmullRomPoint(p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point {
@@ -226,13 +237,17 @@ function getRoadPointAt(road: RoadGeometry, progress: number): RoadPoint {
 
 function getPointsOnRoad(road: RoadGeometry, count: number): RoadPoint[] {
   if (count <= 0) return [];
-  if (count === 1) return [getRoadPointAt(road, 0.02)];
 
   const startProgress = count > 10 ? 0.02 : 0.03;
   const endProgress = count > 10 ? 0.98 : 0.97;
+  const flowLeftToRight = isRoadFlowLeftToRight(road);
+  const firstProgress = flowLeftToRight ? startProgress : endProgress;
+  const lastProgress = flowLeftToRight ? endProgress : startProgress;
+
+  if (count === 1) return [getRoadPointAt(road, firstProgress)];
 
   return Array.from({ length: count }, (_, index) => {
-    const progress = lerp(startProgress, endProgress, index / (count - 1));
+    const progress = lerp(firstProgress, lastProgress, index / (count - 1));
     return getRoadPointAt(road, progress);
   });
 }
@@ -261,21 +276,39 @@ function getDistanceToRoad(road: RoadGeometry, point: Point) {
   return minDistance;
 }
 
-function getLandmarkPlacement(
+function canUseLandmarkPoint(
+  road: RoadGeometry,
+  candidate: Point,
+  lessonPoints: RoadPoint[],
+  selectedPoints: Point[]
+) {
+  if (candidate.x < 0.05 || candidate.x > 0.95 || candidate.y < 0.14 || candidate.y > 0.9) return false;
+  if (getDistanceToRoad(road, candidate) < 0.07) return false;
+  if (lessonPoints.some(point => distance(candidate, point) < 0.09)) return false;
+  if (selectedPoints.some(point => distance(candidate, point) < 0.14)) return false;
+  return true;
+}
+
+function getLandmarkPlacements(
   road: RoadGeometry,
   explicitPoint: Point | null,
   seed: number,
   lessonPoints: RoadPoint[]
-): LandmarkPlacement | null {
+) : LandmarkPlacement[] {
+  const selectedPoints: Point[] = [];
+
+  const tryAddPoint = (candidate: Point | null | undefined) => {
+    if (!candidate) return false;
+
+    const point = normalizePoint(candidate);
+    if (!canUseLandmarkPoint(road, point, lessonPoints, selectedPoints)) return false;
+
+    selectedPoints.push(point);
+    return true;
+  };
+
   if (explicitPoint) {
-    const point = normalizePoint(explicitPoint);
-    const size = Math.round(88 + clamp((point.y - 0.2) / 0.7, 0, 1) * 24);
-    return {
-      x: point.x,
-      y: point.y,
-      width: size,
-      height: size,
-    };
+    selectedPoints.push(normalizePoint(explicitPoint));
   }
 
   const orderedAnchors = LANDMARK_ANCHOR_PROGRESS.map((_, index) => {
@@ -287,8 +320,9 @@ function getLandmarkPlacement(
     const anchor = getRoadPointAt(road, progress);
     const normalX = -anchor.tangentY;
     const normalY = anchor.tangentX;
-    const sidePriority = seed % 2 === 0 ? [1, -1] : [-1, 1];
-    const offsets = [0.10, 0.12, 0.14];
+    const sidePriority = anchor.x >= 0.5 ? [1, -1] : [-1, 1];
+    const offsets = [0.12, 0.15, 0.18];
+    let placedForAnchor = false;
 
     for (const side of sidePriority) {
       for (const offset of offsets) {
@@ -297,34 +331,28 @@ function getLandmarkPlacement(
           y: anchor.y + normalY * offset * side,
         };
 
-        if (candidate.x < 0.05 || candidate.x > 0.95 || candidate.y < 0.18 || candidate.y > 0.9) continue;
-        if (getDistanceToRoad(road, candidate) < 0.07) continue;
-        if (lessonPoints.some(point => distance(candidate, point) < 0.08)) continue;
-
-        const size = Math.round(88 + clamp((candidate.y - 0.18) / 0.72, 0, 1) * 24);
-        return {
-          x: candidate.x,
-          y: candidate.y,
-          width: size,
-          height: size,
-        };
+        if (tryAddPoint(candidate)) {
+          placedForAnchor = true;
+          break;
+        }
       }
+
+      if (placedForAnchor) break;
     }
   }
 
   for (let i = 0; i < LANDMARK_FALLBACKS.length; i++) {
     const candidate = LANDMARK_FALLBACKS[(i + seed) % LANDMARK_FALLBACKS.length];
-    if (getDistanceToRoad(road, candidate) >= 0.07 && lessonPoints.every(point => distance(candidate, point) >= 0.08)) {
-      return {
-        x: candidate.x,
-        y: candidate.y,
-        width: 96,
-        height: 96,
-      };
-    }
+    if (selectedPoints.length >= LANDMARK_ANCHOR_PROGRESS.length) break;
+    tryAddPoint(candidate);
   }
 
-  return null;
+  return selectedPoints.map(point => ({
+    x: point.x,
+    y: point.y,
+    width: LANDMARK_SIZE,
+    height: LANDMARK_SIZE,
+  }));
 }
 
 function getLessonNodeScale(count: number) {
@@ -374,10 +402,6 @@ export default function ModulePage() {
     if (openUnitId) loadLessons(openUnitId);
   }, [openUnitId, loadLessons]);
 
-  const toggleUnit = (unitId: number) => {
-    setOpenUnitId(prev => prev === unitId ? null : unitId);
-  };
-
   if (loading || !moduleData) {
     return (
       <div className="app-layout">
@@ -402,19 +426,15 @@ export default function ModulePage() {
             const gradient = UNIT_GRADIENTS[idx % UNIT_GRADIENTS.length];
             const road = buildRoadGeometry(unit.path_points);
             const nodePositions = getPointsOnRoad(road, lessons.length);
-            const landmarkPlacement = unit.landmark_url
-              ? getLandmarkPlacement(road, unit.landmark_position, idx + lessons.length, nodePositions)
-              : null;
+            const landmarkPlacements = unit.landmark_url
+              ? getLandmarkPlacements(road, unit.landmark_position, idx + lessons.length, nodePositions)
+              : [];
             const nodeScale = getLessonNodeScale(lessons.length);
             const pathImageSrc = unit.path_image_url ? `${API_BASE}${unit.path_image_url}` : pathGreenImg;
 
             return (
               <div className="unit-block" key={unit.id}>
-                <button
-                  className="unit-header"
-                  style={{ background: gradient }}
-                  onClick={() => toggleUnit(unit.id)}
-                >
+                <div className="unit-header" style={{ background: gradient }}>
                   <div className="unit-header-left">
                     <div className="unit-header-icon">
                       <svg viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -433,19 +453,17 @@ export default function ModulePage() {
                         <div className="unit-progress-fill" style={{ width: `${progress}%` }} />
                       </div>
                     </div>
-                    <svg className={`unit-chevron ${isOpen ? 'open' : ''}`} viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 9l-7 7-7-7" />
-                    </svg>
                   </div>
-                </button>
+                </div>
 
                 <div className={`unit-content ${isOpen ? 'open' : 'closed'}`}>
                   <div className="unit-path-map">
                     <img className="unit-path-bg" src={pathImageSrc} alt="" />
 
                     <div className="path-nodes-layer">
-                      {unit.landmark_url && landmarkPlacement && (
+                      {unit.landmark_url && landmarkPlacements.map((landmarkPlacement, landmarkIndex) => (
                         <div
+                          key={`landmark-${unit.id}-${landmarkIndex}`}
                           className="path-landmark-img"
                           style={{
                             left: `${(landmarkPlacement.x * 100).toFixed(1)}%`,
@@ -456,7 +474,7 @@ export default function ModulePage() {
                         >
                           <img src={`${API_BASE}${unit.landmark_url}`} alt={unit.landmark_alt || ''} />
                         </div>
-                      )}
+                      ))}
 
                       {lessons.map((lesson, li) => {
                         const pos = nodePositions[li] || getRoadPointAt(road, 0.5);
@@ -464,16 +482,17 @@ export default function ModulePage() {
                         const isCompleted = lesson.completed;
                         const isLocked = li > 0 && !lessons[li - 1].completed && !lesson.completed;
                         const isActive = !isCompleted && !isLocked;
+                        const lessonNodeStyle: CSSProperties & Record<'--node-scale', string> = {
+                          left: `${(pos.x * 100).toFixed(1)}%`,
+                          top: `${(pos.y * 100).toFixed(1)}%`,
+                          '--node-scale': `${nodeScale}`,
+                        };
 
                         return (
                           <div
                             key={lesson.id}
                             className={`path-lesson-node ${isLocked ? 'locked' : ''}`}
-                            style={{
-                              left: `${(pos.x * 100).toFixed(1)}%`,
-                              top: `${(pos.y * 100).toFixed(1)}%`,
-                              ['--node-scale' as '--node-scale']: `${nodeScale}`,
-                            }}
+                            style={lessonNodeStyle}
                             onClick={() => !isLocked && navigate(`/lesson/${lesson.id}`)}
                           >
                             <div className={`node-circle ${isCompleted ? 'completed' : isActive && isFirst ? 'active' : isActive ? 'active' : 'locked-circle'}`}>

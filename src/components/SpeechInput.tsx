@@ -4,14 +4,17 @@ import './SpeechInput.css';
 interface SpeechInputProps {
   targetWord: string;
   onResult: (transcript: string, isMatch: boolean) => void;
+  disabled?: boolean;
 }
 
-export default function SpeechInput({ targetWord, onResult }: SpeechInputProps) {
+export default function SpeechInput({ targetWord, onResult, disabled = false }: SpeechInputProps) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [status, setStatus] = useState<'idle' | 'listening' | 'success' | 'fail'>('idle');
 
   const startListening = useCallback(() => {
+    if (disabled) return;
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
@@ -66,7 +69,7 @@ export default function SpeechInput({ targetWord, onResult }: SpeechInputProps) 
     };
 
     recognition.start();
-  }, [targetWord, onResult]);
+  }, [disabled, targetWord, onResult]);
 
   return (
     <div className="speech-input">
@@ -76,9 +79,9 @@ export default function SpeechInput({ targetWord, onResult }: SpeechInputProps) 
       </div>
 
       <button
-        className={`speech-btn ${listening ? 'active' : ''} ${status === 'success' ? 'success' : ''} ${status === 'fail' && !listening ? 'fail' : ''}`}
+        className={`speech-btn ${listening ? 'active' : ''} ${status === 'success' ? 'success' : ''} ${status === 'fail' && !listening ? 'fail' : ''} ${disabled ? 'disabled' : ''}`}
         onClick={startListening}
-        disabled={listening}
+        disabled={listening || disabled}
       >
         <div className="speech-btn-inner">
           {listening ? (
@@ -94,7 +97,7 @@ export default function SpeechInput({ targetWord, onResult }: SpeechInputProps) 
           )}
         </div>
         <span className="speech-btn-label">
-          {listening ? 'Слушаю...' : status === 'idle' ? 'Нажмите и говорите' : 'Попробовать снова'}
+          {disabled ? 'Ответ уже зафиксирован' : listening ? 'Слушаю...' : status === 'idle' ? 'Нажмите и говорите' : 'Попробовать снова'}
         </span>
       </button>
 

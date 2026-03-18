@@ -29,7 +29,7 @@
 }
 .admin-logo-sub {
   font-size: 0.65rem;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.68);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -65,7 +65,7 @@
   font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 1.2px;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.5);
   padding: 14px 20px 4px;
 }
 
@@ -75,12 +75,18 @@
 }
 .admin-back-btn {
   display: flex; align-items: center; gap: 8px;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255,255,255,0.72);
   font-size: 0.8rem;
   text-decoration: none;
-  transition: color 0.15s;
+  transition: color 0.15s, background 0.15s;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  cursor: pointer;
 }
-.admin-back-btn:hover { color: rgba(255,255,255,0.8); }
+.admin-back-btn:hover { color: rgba(255,255,255,0.95); background: rgba(255,255,255,0.12); }
 
 /* Main */
 .admin-main {
@@ -140,7 +146,7 @@
 
 /* Buttons */
 .btn-admin-primary {
-  background: var(--bg-sky);
+  background: linear-gradient(135deg, #4285f4, #2563eb);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -151,9 +157,16 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  transition: opacity 0.15s, transform 0.15s;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
 }
-.btn-admin-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-admin-primary:hover { opacity: 0.94; transform: translateY(-1px); box-shadow: 0 14px 24px rgba(37, 99, 235, 0.26); }
+.btn-admin-primary:disabled {
+  background: #cbd5e1;
+  color: rgba(15, 23, 42, 0.5);
+  box-shadow: none;
+  cursor: not-allowed;
+}
 
 .btn-admin-danger {
   background: #fee2e2;
@@ -250,6 +263,7 @@
 }
 .admin-badge-blue { background: #eff6ff; color: #2563eb; }
 .admin-badge-green { background: #f0fdf4; color: #16a34a; }
+.admin-badge-red { background: #fee2e2; color: #dc2626; }
 .admin-badge-orange { background: #fff7ed; color: #ea580c; }
 .admin-badge-purple { background: #faf5ff; color: #7c3aed; }
 

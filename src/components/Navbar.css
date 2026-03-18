@@ -27,7 +27,12 @@
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
 }
-.nav-logo-icon svg { width: 16px; height: 16px; }
+.nav-logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
 .nav-logo-text {
   font-size: 1.2rem;
   font-weight: 800;
@@ -106,9 +111,9 @@
 }
 
 .lang-toggle {
-  background: rgba(255,255,255,0.15);
-  border: 1.5px solid rgba(255,255,255,0.3);
-  color: white;
+  background: var(--blue-50);
+  border: 1.5px solid var(--blue-100);
+  color: var(--blue-600);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -119,7 +124,7 @@
   flex-shrink: 0;
 }
 .lang-toggle:hover {
-  background: rgba(255,255,255,0.28);
+  background: var(--blue-100);
 }
 
 .nav-icon-btn { display: none; }

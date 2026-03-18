@@ -58,6 +58,15 @@
 }
 .speech-btn:disabled { cursor: not-allowed; }
 
+.speech-btn.disabled .speech-btn-inner {
+  background: #cbd5e1;
+  box-shadow: none;
+}
+
+.speech-btn.disabled .speech-btn-label {
+  color: #64748b;
+}
+
 .speech-btn.active .speech-btn-inner {
   background: #6366f1;
   animation: pulse-mic 1.5s infinite;
