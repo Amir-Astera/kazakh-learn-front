@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { register } from '../api';
+import { useNavigate } from 'react-router-dom';
+import { completeOnboarding } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
 import './AuthPage.css';
-
 import mascotImg from '../assets/ChatGPT Image 6 мар. 2026 г., 23_45_55.png';
 import violinImg from '../assets/deco-violin.png';
 import bookImg from '../assets/deco-book.png';
@@ -14,18 +13,14 @@ import dombraImg from '../assets/deco-dombra.png';
 const WEEKLY_OPTIONS = [5, 10, 15, 20] as const;
 
 const STEP_SUBTITLE: Record<number, string> = {
-  1: 'Шаг 1 из 5: учётные данные.',
-  2: 'Шаг 2 из 5: ваш возраст.',
-  3: 'Шаг 3 из 5: уровень казахского.',
-  4: 'Шаг 4 из 5: время на занятия в неделю.',
-  5: 'Шаг 5 из 5: язык интерфейса и цель.',
+  1: 'Шаг 1 из 4: возраст.',
+  2: 'Шаг 2 из 4: уровень казахского.',
+  3: 'Шаг 3 из 4: время в неделю.',
+  4: 'Шаг 4 из 4: язык и цель.',
 };
 
-export default function RegisterPage() {
+export default function OnboardingPage() {
   const [step, setStep] = useState(1);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [age, setAge] = useState('');
   const [weeklyStudyMinutes, setWeeklyStudyMinutes] = useState<number>(10);
   const [languagePair, setLanguagePair] = useState<'ru-kz' | 'en-kz'>('ru-kz');
@@ -33,7 +28,7 @@ export default function RegisterPage() {
   const [proficiencyLevel, setProficiencyLevel] = useState<'beginner' | 'elementary' | 'intermediate'>('beginner');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { setAuth } = useAuth();
+  const { refreshUser } = useAuth();
   const { setLangChoice } = useLang();
   const navigate = useNavigate();
 
@@ -47,8 +42,9 @@ export default function RegisterPage() {
     setError('');
 
     if (step === 1) {
-      if (!name.trim() || !email.trim() || !password || password.length < 6) {
-        setError('Заполните имя, email и пароль (не короче 6 символов).');
+      const ageNum = parseInt(age, 10);
+      if (!Number.isFinite(ageNum) || ageNum < 7 || ageNum > 100) {
+        setError('Укажите возраст от 7 до 100 лет.');
         return;
       }
       setStep(2);
@@ -56,58 +52,44 @@ export default function RegisterPage() {
     }
 
     if (step === 2) {
-      const ageNum = parseInt(age, 10);
-      if (!Number.isFinite(ageNum) || ageNum < 7 || ageNum > 100) {
-        setError('Укажите возраст от 7 до 100 лет.');
-        return;
-      }
       setStep(3);
       return;
     }
 
     if (step === 3) {
-      setStep(4);
-      return;
-    }
-
-    if (step === 4) {
       if (!WEEKLY_OPTIONS.includes(weeklyStudyMinutes as (typeof WEEKLY_OPTIONS)[number])) {
         setError('Выберите 5, 10, 15 или 20 минут в неделю.');
         return;
       }
-      setStep(5);
+      setStep(4);
       return;
     }
 
     const ageNum = parseInt(age, 10);
     setLoading(true);
     try {
-      const res = await register({
-        email,
-        password,
-        name,
+      await completeOnboarding({
+        age: ageNum,
+        weekly_study_minutes: weeklyStudyMinutes,
         language_pair: languagePair,
         learning_goal: learningGoal,
         proficiency_level: proficiencyLevel,
-        age: ageNum,
-        weekly_study_minutes: weeklyStudyMinutes,
       });
-      setAuth(res.data.token, res.data.user);
+      await refreshUser();
       setLangChoice(languagePair === 'en-kz' ? 'en' : 'ru');
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(msg || 'Ошибка регистрации');
+      setError(msg || 'Не удалось сохранить');
     } finally {
       setLoading(false);
     }
   };
 
   const stepTitle =
-    step === 1 ? 'Создать аккаунт'
-    : step === 2 ? 'Ваш возраст'
-    : step === 3 ? 'Насколько хорошо вы знаете казахский?'
-    : step === 4 ? 'Сколько минут в неделю готовы уделять?'
+    step === 1 ? 'Ваш возраст'
+    : step === 2 ? 'Насколько хорошо вы знаете казахский?'
+    : step === 3 ? 'Сколько минут в неделю готовы уделять?'
     : 'Язык и цель';
 
   return (
@@ -136,29 +118,6 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit}>
           {step === 1 && (
-            <>
-              <div className="auth-form-group">
-                <label className="auth-form-label">Имя</label>
-                <input className="auth-form-input" type="text" value={name}
-                  onChange={e => setName(e.target.value)} placeholder="Введите ваше имя"
-                  required autoComplete="name" />
-              </div>
-              <div className="auth-form-group">
-                <label className="auth-form-label">Email</label>
-                <input className="auth-form-input" type="email" value={email}
-                  onChange={e => setEmail(e.target.value)} placeholder="Введите ваш email"
-                  required autoComplete="email" />
-              </div>
-              <div className="auth-form-group">
-                <label className="auth-form-label">Пароль</label>
-                <input className="auth-form-input" type="password" value={password}
-                  onChange={e => setPassword(e.target.value)} placeholder="••••••••••"
-                  required minLength={6} autoComplete="new-password" />
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
             <div className="auth-form-group">
               <label className="auth-form-label">Сколько вам полных лет?</label>
               <input
@@ -175,7 +134,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div className="auth-form-group">
               <select
                 className="auth-form-input auth-form-select"
@@ -191,7 +150,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {step === 4 && (
+          {step === 3 && (
             <div className="auth-form-group">
               <div className="auth-segmented-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }} role="group" aria-label="Минут в неделю">
                 {WEEKLY_OPTIONS.map(m => (
@@ -208,7 +167,7 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <>
               <div className="auth-form-group">
                 <label className="auth-form-label">Языковая пара</label>
@@ -244,26 +203,10 @@ export default function RegisterPage() {
               </button>
             )}
             <button type="submit" className="auth-btn-submit" style={{ flex: 2 }} disabled={loading}>
-              {loading ? 'Создаём аккаунт...' : step === 5 ? 'Начать обучение' : 'Далее'}
+              {loading ? 'Сохраняем…' : step === 4 ? 'Продолжить к урокам' : 'Далее'}
             </button>
           </div>
         </form>
-
-        {step === 1 && (
-          <button className="auth-btn-google" type="button" onClick={() => { window.location.href = 'http://localhost:5000/api/auth/google'; }}>
-            <svg width="18" height="18" viewBox="0 0 48 48">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            </svg>
-            Продолжить через Google
-          </button>
-        )}
-
-        <p className="auth-switch-link">
-          Уже есть аккаунт? <Link to="/login">Войти</Link>
-        </p>
       </div>
     </div>
   );

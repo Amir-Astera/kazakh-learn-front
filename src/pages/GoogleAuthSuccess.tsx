@@ -21,7 +21,11 @@ export default function GoogleAuthSuccess() {
     getMe()
       .then(res => {
         setAuth(token, res.data);
-        navigate('/');
+        if (res.data.onboarding_completed === false) {
+          navigate('/onboarding', { replace: true });
+        } else {
+          navigate('/', { replace: true });
+        }
       })
       .catch(() => {
         localStorage.removeItem('token');

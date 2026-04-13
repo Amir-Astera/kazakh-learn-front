@@ -48,7 +48,9 @@ function getNodeIcon(icon: string, status: string) {
 
 export default function PathNode({ unit, position, isLast }: PathNodeProps) {
   const navigate = useNavigate();
-  const progress = unit.lesson_count > 0 ? unit.completed_lessons / unit.lesson_count : 0;
+  const progress = unit.lesson_count > 0
+    ? Math.min(1, unit.completed_lessons / unit.lesson_count)
+    : 0;
   const circumference = unit.status === 'current' ? 2 * Math.PI * 44 : 2 * Math.PI * 40;
   const offset = circumference * (1 - progress);
 

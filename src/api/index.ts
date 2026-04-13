@@ -22,6 +22,8 @@ export interface RegisterPayload {
   language_pair: 'ru-kz' | 'en-kz';
   learning_goal: 'general' | 'travel' | 'study' | 'work';
   proficiency_level: 'beginner' | 'elementary' | 'intermediate';
+  age: number;
+  weekly_study_minutes: number;
 }
 
 export const login = (email: string, password: string) =>
@@ -29,6 +31,17 @@ export const login = (email: string, password: string) =>
 
 export const register = (payload: RegisterPayload) =>
   api.post('/auth/register', payload);
+
+export interface OnboardingPayload {
+  age: number;
+  weekly_study_minutes: number;
+  language_pair: 'ru-kz' | 'en-kz';
+  learning_goal: 'general' | 'travel' | 'study' | 'work';
+  proficiency_level: 'beginner' | 'elementary' | 'intermediate';
+}
+
+export const completeOnboarding = (payload: OnboardingPayload) =>
+  api.post('/auth/onboarding', payload);
 
 export const getMe = () => api.get('/auth/me');
 
@@ -67,6 +80,8 @@ export const completeLesson = (lessonId: number, data: { score: number; mistakes
 
 // Progress
 export const getDashboard = () => api.get('/progress/dashboard');
+
+export const getReviewWords = () => api.get<{ words: string[] }>('/progress/review-words');
 
 export const getStats = () => api.get('/progress/stats');
 

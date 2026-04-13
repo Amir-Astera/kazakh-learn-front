@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import './SpeechInput.css';
 
 interface SpeechInputProps {
@@ -15,6 +15,14 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
   const [status, setStatus] = useState<'idle' | 'listening' | 'success' | 'fail' | 'no-support'>('idle');
   const [attempts, setAttempts] = useState(0);
   const [similarity, setSimilarity] = useState(0);
+
+  useEffect(() => {
+    setListening(false);
+    setTranscript('');
+    setStatus('idle');
+    setAttempts(0);
+    setSimilarity(0);
+  }, [targetWord]);
 
   const startListening = useCallback(() => {
     if (disabled || status === 'success') return;
@@ -66,8 +74,10 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
         isMatch = bestSimilarity >= 0.72;
       }
 
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
+      setAttempts((prevAttempts) => {
+        const next = prevAttempts + 1;
+        return next;
+      });
       setTranscript(bestTranscript);
       setSimilarity(Math.round(bestSimilarity * 100));
       setStatus(isMatch ? 'success' : 'fail');
@@ -92,7 +102,7 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
     };
 
     recognition.start();
-  }, [disabled, targetWord, onResult, attempts, status]);
+  }, [disabled, targetWord, onResult, status]);
 
   const canRetry = status === 'fail' && attempts < MAX_ATTEMPTS && !disabled;
 

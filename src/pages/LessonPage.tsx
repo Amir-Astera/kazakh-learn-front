@@ -381,6 +381,8 @@ export default function LessonPage() {
   const [startTime] = useState(Date.now());
   const [lockedMessage, setLockedMessage] = useState('');
 
+  const completionAccuracy = Math.max(0, 100 - mistakes * 15);
+
   useEffect(() => {
     if (!lessonId) return;
     setLockedMessage('');
@@ -463,7 +465,7 @@ export default function LessonPage() {
                 <span className="stat-label">XP получено</span>
               </div>
               <div className="complete-stat">
-                <span className="stat-value">{finalAccuracy}%</span>
+                <span className="stat-value">{completionAccuracy}%</span>
                 <span className="stat-label">Точность</span>
               </div>
               <div className="complete-stat">
@@ -528,7 +530,6 @@ export default function LessonPage() {
   const totalExercises = lesson.exercises.length;
   const solvedExercises = currentIndex + (feedback ? 1 : 0);
   const progress = (solvedExercises / totalExercises) * 100;
-  const finalAccuracy = Math.max(0, 100 - mistakes * 15);
   const exerciseTypeLabel = getExerciseTypeLabel(exercise.type);
 
   const handleCheck = async () => {
@@ -571,7 +572,7 @@ export default function LessonPage() {
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     try {
       const res = await completeLesson(lesson.id, {
-        score: finalAccuracy,
+        score: completionAccuracy,
         mistakes,
         timeSpent,
       });
@@ -633,6 +634,7 @@ export default function LessonPage() {
                 Произнесите слово или фразу как можно ближе к правильному варианту.
               </div>
               <SpeechInput
+                key={exercise.id}
                 targetWord={exercise.correct_answer}
                 onResult={handleSpeechResult}
                 disabled={!!feedback}

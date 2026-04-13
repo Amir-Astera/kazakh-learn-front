@@ -12,6 +12,8 @@ import RegisterPage from './pages/RegisterPage'
 import RatingPage from './pages/RatingPage'
 import ChatPage from './pages/ChatPage'
 import GoogleAuthSuccess from './pages/GoogleAuthSuccess'
+import OnboardingPage from './pages/OnboardingPage'
+import ReviewWordsPage from './pages/ReviewWordsPage'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminLevels from './pages/admin/AdminLevels'
 import AdminModules from './pages/admin/AdminModules'
@@ -20,9 +22,14 @@ import AdminLessons from './pages/admin/AdminLessons'
 import AdminExercises from './pages/admin/AdminExercises'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { token, loading } = useAuth()
+  const { token, loading, user } = useAuth()
+  const location = useLocation()
   if (loading) return <div style={{ color: 'white', textAlign: 'center', padding: '100px' }}>Loading...</div>
-  return token ? <>{children}</> : <Navigate to="/login" />
+  if (!token) return <Navigate to="/login" />
+  if (user && user.onboarding_completed === false && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />
+  }
+  return <>{children}</>
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -43,6 +50,7 @@ function App() {
   const { setLangChoice } = useLang()
   const location = useLocation()
   const isAdmin = location.pathname.startsWith('/admin')
+  const hideNavbar = isAdmin || location.pathname === '/onboarding'
 
   useEffect(() => {
     if (!user?.language_pair) return
@@ -51,7 +59,7 @@ function App() {
 
   return (
     <>
-      {token && !isAdmin && <Navbar />}
+      {token && !hideNavbar && <Navbar />}
       <Routes>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
@@ -59,6 +67,8 @@ function App() {
         <Route path="/module/:moduleId" element={<PrivateRoute><ModulePage /></PrivateRoute>} />
         <Route path="/unit/:unitId" element={<PrivateRoute><UnitPage /></PrivateRoute>} />
         <Route path="/lesson/:lessonId" element={<PrivateRoute><LessonPage /></PrivateRoute>} />
+        <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
+        <Route path="/review-words" element={<PrivateRoute><ReviewWordsPage /></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
         <Route path="/rating" element={<PrivateRoute><RatingPage /></PrivateRoute>} />
         <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />

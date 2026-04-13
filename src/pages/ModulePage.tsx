@@ -376,7 +376,7 @@ export default function ModulePage() {
             const isOpen = openUnitId === unit.id;
             const lessons = [...(unitLessons[unit.id] || [])].sort((a, b) => a.order_num - b.order_num);
             const progress = unit.lesson_count > 0
-              ? Math.round((unit.completed_lessons / unit.lesson_count) * 100)
+              ? Math.min(100, Math.round((unit.completed_lessons / unit.lesson_count) * 100))
               : 0;
             const gradient = UNIT_GRADIENTS[idx % UNIT_GRADIENTS.length];
             const road = buildRoadGeometry(unit.path_points);

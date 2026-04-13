@@ -1,6 +1,87 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { sendChatMessage, type ChatMessage } from '../api';
 import './ChatPage.css';
+
+/** Простой inline-Markdown: **жирный**, `код` (без HTML из ответа модели). */
+function renderInlineMarkdown(text: string, baseKey: string): ReactNode {
+  const re = /(\*\*.+?\*\*|`[^`]+`)/g;
+  const nodes: ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let idx = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      nodes.push(<span key={`${baseKey}-t-${idx++}`}>{text.slice(last, m.index)}</span>);
+    }
+    const tok = m[1];
+    if (tok.startsWith('**') && tok.endsWith('**') && tok.length > 4) {
+      nodes.push(<strong key={`${baseKey}-b-${idx++}`}>{tok.slice(2, -2)}</strong>);
+    } else if (tok.startsWith('`') && tok.endsWith('`') && tok.length > 2) {
+      nodes.push(<code key={`${baseKey}-c-${idx++}`} className="chat-inline-code">{tok.slice(1, -1)}</code>);
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) {
+    nodes.push(<span key={`${baseKey}-t-${idx++}`}>{text.slice(last)}</span>);
+  }
+  return nodes.length > 0 ? nodes : text;
+}
+
+/** Блоки для ответа ассистента: переносы, #–###, списки - / *, inline ** и `. */
+function renderAssistantMarkdown(content: string): ReactNode {
+  const lines = content.split('\n');
+  const blocks: ReactNode[] = [];
+  let listBuffer: string[] = [];
+  let k = 0;
+
+  const flushList = () => {
+    if (listBuffer.length === 0) return;
+    blocks.push(
+      <ul key={`ul-${k++}`} className="chat-md-ul">
+        {listBuffer.map((item, i) => (
+          <li key={i} className="chat-md-li">{renderInlineMarkdown(item, `li-${k}-${i}`)}</li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+
+  for (const line of lines) {
+    const listMatch = /^\s*[-*]\s+(.+)$/.exec(line);
+    if (listMatch) {
+      listBuffer.push(listMatch[1]);
+      continue;
+    }
+    flushList();
+
+    if (line.trim() === '') {
+      blocks.push(<div key={`gap-${k++}`} className="chat-md-gap" />);
+      continue;
+    }
+
+    const t = line.trimStart();
+    if (t.startsWith('### ')) {
+      blocks.push(
+        <h3 key={`h3-${k++}`} className="chat-md-h3">{renderInlineMarkdown(t.slice(4), `h3-${k}`)}</h3>
+      );
+    } else if (t.startsWith('## ')) {
+      blocks.push(
+        <h2 key={`h2-${k++}`} className="chat-md-h2">{renderInlineMarkdown(t.slice(3), `h2-${k}`)}</h2>
+      );
+    } else if (t.startsWith('# ')) {
+      blocks.push(
+        <h2 key={`h1-${k++}`} className="chat-md-h1">{renderInlineMarkdown(t.slice(2), `h1-${k}`)}</h2>
+      );
+    } else {
+      blocks.push(
+        <p key={`p-${k++}`} className="chat-md-p">{renderInlineMarkdown(line, `p-${k}`)}</p>
+      );
+    }
+  }
+  flushList();
+
+  return <div className="chat-md-root">{blocks}</div>;
+}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -105,12 +186,14 @@ export default function ChatPage() {
                 <div className="chat-avatar">🤖</div>
               )}
               <div className={`chat-bubble ${msg.role}`}>
-                {msg.content.split('\n').map((line, j) => (
-                  <span key={j}>
-                    {line}
-                    {j < msg.content.split('\n').length - 1 && <br />}
-                  </span>
-                ))}
+                {msg.role === 'assistant'
+                  ? renderAssistantMarkdown(msg.content)
+                  : msg.content.split('\n').map((line, j, arr) => (
+                      <span key={j}>
+                        {line}
+                        {j < arr.length - 1 && <br />}
+                      </span>
+                    ))}
               </div>
             </div>
           ))}

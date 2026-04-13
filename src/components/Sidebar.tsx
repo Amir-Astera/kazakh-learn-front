@@ -173,7 +173,7 @@ export default function Sidebar() {
           <div className="reminder-content">
             <h4>{reminder.title}</h4>
             <p>{reminder.message}</p>
-            <button className="btn-primary" onClick={() => navigate('/')}>Повторить слова</button>
+            <button type="button" className="btn-primary" onClick={() => navigate('/review-words')}>Повторить слова</button>
           </div>
         </div>
       )}

@@ -13,6 +13,8 @@ interface User {
   language_pair?: 'ru-kz' | 'en-kz';
   learning_goal?: 'general' | 'travel' | 'study' | 'work';
   proficiency_level?: 'beginner' | 'elementary' | 'intermediate';
+  age?: number | null;
+  weekly_study_minutes?: number | null;
   onboarding_completed?: boolean;
   created_at?: string;
 }

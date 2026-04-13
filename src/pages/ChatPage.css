@@ -195,6 +195,65 @@
   border-bottom-right-radius: 4px;
 }
 
+/* Assistant markdown */
+.chat-md-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+
+.chat-md-p {
+  margin: 0;
+}
+
+.chat-md-gap {
+  min-height: 0.5em;
+}
+
+.chat-md-h1,
+.chat-md-h2,
+.chat-md-h3 {
+  margin: 0.35em 0 0.15em;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--bg-night, #1a2236);
+}
+
+.chat-md-h1 {
+  font-size: 1.05rem;
+}
+
+.chat-md-h2 {
+  font-size: 1rem;
+}
+
+.chat-md-h3 {
+  font-size: 0.95rem;
+}
+
+.chat-md-ul {
+  margin: 0.15em 0 0.35em;
+  padding-left: 1.25rem;
+}
+
+.chat-md-li {
+  margin: 0.2em 0;
+}
+
+.chat-bubble.assistant strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.chat-inline-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.08em 0.35em;
+}
+
 /* Typing animation */
 .chat-typing {
   display: flex;
