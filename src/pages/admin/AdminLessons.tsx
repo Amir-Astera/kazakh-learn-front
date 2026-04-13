@@ -3,13 +3,13 @@ import AdminLayout from './AdminLayout';
 import { adminGetLessons, adminCreateLesson, adminUpdateLesson, adminDeleteLesson, adminGetUnits } from '../../api';
 
 interface Unit { id: number; title_kz: string; title: string; module_title: string; }
-interface Lesson { id: number; unit_id: number; unit_title: string; title: string; type: string; xp_reward: number; order_num: number; }
+interface Lesson { id: number; unit_id: number; unit_title: string; title: string; type: string; xp_reward: number; order_num: number; content: string | null; }
 
-const TYPES = ['translation','choice','grammar','sentence','listening','speaking'];
-const TYPE_LABELS: Record<string,string> = { translation:'Перевод', choice:'Выбор', grammar:'Грамматика', sentence:'Предложение', listening:'Аудирование', speaking:'Произношение' };
-const TYPE_COLORS: Record<string,string> = { translation:'admin-badge-blue', choice:'admin-badge-green', grammar:'admin-badge-purple', sentence:'admin-badge-orange', listening:'admin-badge-purple', speaking:'admin-badge-blue' };
+const TYPES = ['translation','choice','grammar','sentence','listening','speaking','theory'];
+const TYPE_LABELS: Record<string,string> = { translation:'Перевод', choice:'Выбор', grammar:'Грамматика', sentence:'Предложение', listening:'Аудирование', speaking:'Произношение', theory:'Теория' };
+const TYPE_COLORS: Record<string,string> = { translation:'admin-badge-blue', choice:'admin-badge-green', grammar:'admin-badge-purple', sentence:'admin-badge-orange', listening:'admin-badge-purple', speaking:'admin-badge-blue', theory:'admin-badge-green' };
 
-const empty = { unit_id: 1, title: '', type: 'translation', xp_reward: 10, order_num: 1 };
+const empty = { unit_id: 1, title: '', type: 'translation', xp_reward: 10, order_num: 1, content: '' };
 
 export default function AdminLessons() {
   const [items, setItems]   = useState<Lesson[]>([]);
@@ -31,7 +31,7 @@ export default function AdminLessons() {
   const openCreate = () => { setEditing(null); setForm({ ...empty, unit_id: units[0]?.id || 1 }); setModal(true); };
   const openEdit = (l: Lesson) => {
     setEditing(l);
-    setForm({ unit_id: l.unit_id, title: l.title, type: l.type, xp_reward: l.xp_reward, order_num: l.order_num });
+    setForm({ unit_id: l.unit_id, title: l.title, type: l.type, xp_reward: l.xp_reward, order_num: l.order_num, content: l.content || '' });
     setModal(true);
   };
   const close = () => setModal(false);
@@ -119,6 +119,17 @@ export default function AdminLessons() {
                 <div className="admin-field"><label>Порядок</label>
                   <input type="number" value={form.order_num} onChange={e => setForm({...form, order_num: +e.target.value})} /></div>
               </div>
+              {form.type === 'theory' && (
+                <div className="admin-field"><label>Теоретический контент (Markdown)</label>
+                  <textarea
+                    rows={8}
+                    style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: '0.85rem' }}
+                    value={form.content}
+                    onChange={e => setForm({...form, content: e.target.value})}
+                    placeholder="## Алфавит&#10;&#10;Казахский алфавит состоит из 42 букв..."
+                  />
+                </div>
+              )}
               <div className="admin-form-actions">
                 <button className="btn-admin-cancel" onClick={close}>Отмена</button>
                 <button className="btn-admin-primary" onClick={save} disabled={saving}>{saving ? 'Сохранение...' : 'Сохранить'}</button>

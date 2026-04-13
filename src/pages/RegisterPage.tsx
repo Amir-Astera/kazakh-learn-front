@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { register } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LanguageContext';
 import './AuthPage.css';
 
 import mascotImg from '../assets/ChatGPT Image 6 мар. 2026 г., 23_45_55.png';
@@ -14,10 +15,14 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [languagePair, setLanguagePair] = useState<'ru-kz' | 'en-kz'>('ru-kz');
+  const [learningGoal, setLearningGoal] = useState<'general' | 'travel' | 'study' | 'work'>('general');
+  const [proficiencyLevel, setProficiencyLevel] = useState<'beginner' | 'elementary' | 'intermediate'>('beginner');
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuth();
+  const { setLangChoice } = useLang();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,8 +30,16 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await register(email, password, name);
+      const res = await register({
+        email,
+        password,
+        name,
+        language_pair: languagePair,
+        learning_goal: learningGoal,
+        proficiency_level: proficiencyLevel,
+      });
       setAuth(res.data.token, res.data.user);
+      setLangChoice(languagePair === 'en-kz' ? 'en' : 'ru');
       navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Ошибка регистрации');
@@ -57,56 +70,88 @@ export default function RegisterPage() {
 
       {/* Form — sits on top of blue area (right) */}
       <div className="auth-form-wrapper">
-        <h1 className="auth-form-title">Create account</h1>
+        <h1 className="auth-form-title">Создать аккаунт</h1>
+        <p className="auth-form-subtitle">Настрой путь обучения казахскому языку с первого шага.</p>
 
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="auth-form-group">
-            <label className="auth-form-label">Name</label>
+            <label className="auth-form-label">Имя</label>
             <input className="auth-form-input" type="text" value={name}
-              onChange={e => setName(e.target.value)} placeholder="Enter your name"
+              onChange={e => setName(e.target.value)} placeholder="Введите ваше имя"
               required autoComplete="name" />
           </div>
           <div className="auth-form-group">
             <label className="auth-form-label">Email</label>
             <input className="auth-form-input" type="email" value={email}
-              onChange={e => setEmail(e.target.value)} placeholder="Enter your email"
+              onChange={e => setEmail(e.target.value)} placeholder="Введите ваш email"
               required autoComplete="email" />
           </div>
           <div className="auth-form-group">
-            <label className="auth-form-label">Password</label>
+            <label className="auth-form-label">Пароль</label>
             <input className="auth-form-input" type="password" value={password}
               onChange={e => setPassword(e.target.value)} placeholder="••••••••••"
               required minLength={6} autoComplete="new-password" />
+          </div>
+
+          <div className="auth-form-group">
+            <label className="auth-form-label">Языковая пара</label>
+            <div className="auth-segmented-grid">
+              <button type="button" className={`auth-segmented-btn ${languagePair === 'ru-kz' ? 'active' : ''}`} onClick={() => setLanguagePair('ru-kz')}>
+                Русский → Қазақша
+              </button>
+              <button type="button" className={`auth-segmented-btn ${languagePair === 'en-kz' ? 'active' : ''}`} onClick={() => setLanguagePair('en-kz')}>
+                English → Қазақша
+              </button>
+            </div>
+          </div>
+
+          <div className="auth-form-group">
+            <label className="auth-form-label">Цель обучения</label>
+            <select className="auth-form-input auth-form-select" value={learningGoal} onChange={e => setLearningGoal(e.target.value as 'general' | 'travel' | 'study' | 'work')}>
+              <option value="general">Общее изучение</option>
+              <option value="travel">Путешествия</option>
+              <option value="study">Учёба</option>
+              <option value="work">Работа</option>
+            </select>
+          </div>
+
+          <div className="auth-form-group">
+            <label className="auth-form-label">Текущий уровень</label>
+            <select className="auth-form-input auth-form-select" value={proficiencyLevel} onChange={e => setProficiencyLevel(e.target.value as 'beginner' | 'elementary' | 'intermediate')}>
+              <option value="beginner">Beginner / Начинающий</option>
+              <option value="elementary">Elementary / Базовый</option>
+              <option value="intermediate">Intermediate / Средний</option>
+            </select>
           </div>
 
           <div className="auth-form-row">
             <div className="auth-form-row-left">
               <input type="checkbox" id="rem-reg" checked={remember}
                 onChange={e => setRemember(e.target.checked)} />
-              <label htmlFor="rem-reg">Remember me</label>
+              <label htmlFor="rem-reg">Запомнить меня</label>
             </div>
-            <button type="button" className="auth-form-forgot">Forgot password</button>
+            <button type="button" className="auth-form-forgot">Нужна помощь?</button>
           </div>
 
           <button type="submit" className="auth-btn-submit" disabled={loading}>
-            {loading ? 'Signing up...' : 'Sign up'}
+            {loading ? 'Создаём аккаунт...' : 'Начать обучение'}
           </button>
         </form>
 
-        <button className="auth-btn-google" type="button">
+        <button className="auth-btn-google" type="button" onClick={() => { window.location.href = 'http://localhost:5000/api/auth/google'; }}>
           <svg width="18" height="18" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
             <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
           </svg>
-          Sign up with Google
+          Продолжить через Google
         </button>
 
         <p className="auth-switch-link">
-          Already have an account? <Link to="/login">Sign in</Link>
+          Уже есть аккаунт? <Link to="/login">Войти</Link>
         </p>
       </div>
     </div>

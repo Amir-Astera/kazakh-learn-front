@@ -20,12 +20,22 @@ export default function UnitPage() {
   const navigate = useNavigate();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lockedMessage, setLockedMessage] = useState('');
 
   useEffect(() => {
     if (!unitId) return;
+    setLockedMessage('');
+    setLoading(true);
     getUnitLessons(parseInt(unitId))
       .then(res => setLessons(res.data))
-      .catch(() => navigate('/'))
+      .catch((err) => {
+        if (err.response?.status === 403) {
+          setLessons([]);
+          setLockedMessage(err.response?.data?.error || 'Сначала завершите предыдущий раздел.');
+          return;
+        }
+        navigate('/');
+      })
       .finally(() => setLoading(false));
   }, [unitId, navigate]);
 
@@ -36,15 +46,17 @@ export default function UnitPage() {
     sentence: 'Составление',
     listening: 'Аудирование',
     speaking: 'Произношение',
+    theory: 'Теория',
   };
 
   const typeColors: Record<string, string> = {
     translation: 'var(--blue-500)',
     choice: 'var(--brand-500)',
-    grammar: 'var(--violet-500)',
+    grammar: 'var(--blue-500)',
     sentence: 'var(--orange-500)',
     listening: 'var(--violet-500)',
     speaking: 'var(--red-500)',
+    theory: 'var(--brand-500)',
   };
 
   const completedCount = lessons.filter(lesson => lesson.completed).length;
@@ -60,6 +72,25 @@ export default function UnitPage() {
       <div className="unit-page">
         <div className="unit-container">
           <LoadingSpinner message="Загрузка уроков..." />
+        </div>
+      </div>
+    );
+  }
+
+  if (lockedMessage) {
+    return (
+      <div className="unit-page">
+        <div className="unit-container">
+          <button className="unit-back" type="button" onClick={() => navigate(-1)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+            </svg>
+            Назад к модулю
+          </button>
+
+          <div className="unit-empty-state">
+            {lockedMessage}
+          </div>
         </div>
       </div>
     );

@@ -24,6 +24,7 @@ interface LessonData {
   title: string;
   type: string;
   xp_reward: number;
+  content: string | null;
   exercises: Exercise[];
 }
 
@@ -53,9 +54,281 @@ function getExerciseTypeLabel(type: string) {
       return 'Соберите предложение';
     case 'listening':
       return 'Аудирование';
+    case 'grammar':
+      return 'Грамматика';
+    case 'theory':
+      return 'Теоретический урок';
     default:
       return 'Задание урока';
   }
+}
+
+function renderSimpleMarkdown(text: string): ReactNode[] {
+  const lines = text.split('\n');
+  const result: ReactNode[] = [];
+  let listBuffer: string[] = [];
+
+  const flushList = () => {
+    if (listBuffer.length === 0) return;
+    result.push(
+      <ul key={result.length} className="theory-list">
+        {listBuffer.map((item, i) => <li key={i}>{item}</li>)}
+      </ul>
+    );
+    listBuffer = [];
+  };
+
+  lines.forEach((line, i) => {
+    if (line.startsWith('### ')) {
+      flushList();
+      result.push(<h3 key={i} className="theory-h3">{line.slice(4)}</h3>);
+    } else if (line.startsWith('## ')) {
+      flushList();
+      result.push(<h2 key={i} className="theory-h2">{line.slice(3)}</h2>);
+    } else if (line.startsWith('# ')) {
+      flushList();
+      result.push(<h1 key={i} className="theory-h1">{line.slice(2)}</h1>);
+    } else if (line.startsWith('- ') || line.startsWith('* ')) {
+      listBuffer.push(line.slice(2));
+    } else if (line.startsWith('**') && line.endsWith('**') && line.length > 4) {
+      flushList();
+      result.push(<p key={i} className="theory-bold-line"><strong>{line.slice(2, -2)}</strong></p>);
+    } else if (line.trim() === '') {
+      flushList();
+      result.push(<div key={i} className="theory-spacer" />);
+    } else {
+      flushList();
+      const parts = line.split(/(\*\*[^*]+\*\*)/g);
+      result.push(
+        <p key={i} className="theory-p">
+          {parts.map((part, j) =>
+            part.startsWith('**') && part.endsWith('**')
+              ? <strong key={j}>{part.slice(2, -2)}</strong>
+              : part
+          )}
+        </p>
+      );
+    }
+  });
+  flushList();
+  return result;
+}
+
+function TheoryLesson({ lesson, onComplete }: { lesson: LessonData; onComplete: () => void }) {
+  const [page, setPage] = useState(0);
+  const content = lesson.content || '';
+  const sections = content.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
+  const pages = sections.length > 0 ? sections : [content];
+  const total = pages.length;
+  const isLast = page === total - 1;
+
+  return (
+    <div className="lesson-container">
+      <div className="lesson-header lesson-header-card">
+        <div className="lesson-header-copy">
+          <span className="lesson-kicker">Теоретический урок</span>
+          <h1 className="lesson-title">{lesson.title}</h1>
+        </div>
+        <div className="lesson-progress-stack">
+          <div className="lesson-progress-bar">
+            <div className="lesson-progress-fill" style={{ width: `${((page + 1) / total) * 100}%` }} />
+          </div>
+          <span className="lesson-counter">{page + 1}/{total}</span>
+        </div>
+      </div>
+
+      <div className="theory-card exercise-area lesson-exercise-card">
+        <div className="theory-content">
+          {renderSimpleMarkdown(pages[page])}
+        </div>
+      </div>
+
+      <div className="lesson-footer lesson-footer-card">
+        <div className="lesson-footer-copy">
+          {isLast ? 'Последняя карточка. Завершите урок чтобы получить XP.' : 'Изучите материал и переходите к следующей карточке.'}
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {page > 0 && (
+            <button className="lesson-btn check" onClick={() => setPage(p => p - 1)}>Назад</button>
+          )}
+          {!isLast ? (
+            <button className="lesson-btn continue" onClick={() => setPage(p => p + 1)}>Далее</button>
+          ) : (
+            <button className="lesson-btn continue" onClick={onComplete}>Завершить урок</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Listening Exercise ───────────────────────────────────────────────────────
+function ListeningExercise({
+  exercise, selectedAnswer, setSelectedAnswer, feedback,
+}: {
+  exercise: Exercise;
+  selectedAnswer: string;
+  setSelectedAnswer: (v: string) => void;
+  feedback: FeedbackState;
+}) {
+  const [played, setPlayed] = useState(false);
+
+  const speak = () => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(exercise.correct_answer);
+    utt.lang = 'kk-KZ';
+    utt.rate = 0.85;
+    window.speechSynthesis.speak(utt);
+    setPlayed(true);
+  };
+
+  return (
+    <div className="listening-wrap">
+      <div className="listening-play-area">
+        <button className={`listening-play-btn ${played ? 'played' : ''}`} onClick={speak} type="button">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+          </svg>
+        </button>
+        <div className="listening-hint">
+          {played ? 'Прослушайте ещё раз и выберите ответ' : 'Нажмите чтобы прослушать слово'}
+        </div>
+      </div>
+      <div className="exercise-options">
+        {exercise.options && exercise.options.map((option: string, i: number) => (
+          <button
+            key={i}
+            className={`option-btn ${selectedAnswer === option ? 'selected' : ''} ${
+              feedback
+                ? option === feedback.correct_answer ? 'correct'
+                  : selectedAnswer === option && !feedback.correct ? 'wrong' : ''
+                : ''
+            }`}
+            onClick={() => !feedback && setSelectedAnswer(option)}
+            disabled={!!feedback}
+          >
+            <span className="option-letter">{String.fromCharCode(65 + i)}</span>
+            <span className="option-copy">{option}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Sentence Builder Exercise ─────────────────────────────────────────────────
+function SentenceExercise({
+  exercise, selectedAnswer, setSelectedAnswer, feedback,
+}: {
+  exercise: Exercise;
+  selectedAnswer: string;
+  setSelectedAnswer: (v: string) => void;
+  feedback: FeedbackState;
+}) {
+  const words = selectedAnswer ? selectedAnswer.split(' ').filter(Boolean) : [];
+  const allWords = exercise.options || [];
+  // Count usage per word to handle duplicates
+  const usedCount: Record<string, number> = {};
+  words.forEach(w => { usedCount[w] = (usedCount[w] || 0) + 1; });
+  const availCount: Record<string, number> = {};
+  allWords.forEach(w => { availCount[w] = (availCount[w] || 0) + 1; });
+
+  const addWord = (word: string) => {
+    if (feedback) return;
+    const newWords = [...words, word];
+    setSelectedAnswer(newWords.join(' '));
+  };
+
+  const removeWord = (index: number) => {
+    if (feedback) return;
+    const newWords = words.filter((_, i) => i !== index);
+    setSelectedAnswer(newWords.join(' '));
+  };
+
+  const isWordAvailable = (word: string) => {
+    const used = usedCount[word] || 0;
+    const avail = availCount[word] || 0;
+    return used < avail;
+  };
+
+  return (
+    <div className="sentence-wrap">
+      <div className="sentence-drop-area">
+        {words.length === 0 && (
+          <span className="sentence-placeholder">Нажимайте на слова чтобы составить предложение</span>
+        )}
+        {words.map((word, i) => (
+          <button key={i} className="sentence-word chosen" onClick={() => removeWord(i)} type="button" disabled={!!feedback}>
+            {word}
+          </button>
+        ))}
+      </div>
+      <div className="sentence-bank">
+        {allWords.map((word, i) => (
+          <button
+            key={i}
+            className={`sentence-word bank ${!isWordAvailable(word) || !!feedback ? 'used' : ''}`}
+            onClick={() => isWordAvailable(word) && addWord(word)}
+            type="button"
+            disabled={!isWordAvailable(word) || !!feedback}
+          >
+            {word}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Grammar Fill-in-blank Exercise ────────────────────────────────────────────
+function GrammarExercise({
+  exercise, selectedAnswer, setSelectedAnswer, feedback,
+}: {
+  exercise: Exercise;
+  selectedAnswer: string;
+  setSelectedAnswer: (v: string) => void;
+  feedback: FeedbackState;
+}) {
+  // If options exist — render as choice; if no options — free text input
+  const hasOptions = exercise.options && exercise.options.length > 0;
+
+  if (hasOptions) {
+    return (
+      <div className="exercise-options">
+        {exercise.options.map((option: string, i: number) => (
+          <button
+            key={i}
+            className={`option-btn ${selectedAnswer === option ? 'selected' : ''} ${
+              feedback
+                ? option === feedback.correct_answer ? 'correct'
+                  : selectedAnswer === option && !feedback.correct ? 'wrong' : ''
+                : ''
+            }`}
+            onClick={() => !feedback && setSelectedAnswer(option)}
+            disabled={!!feedback}
+          >
+            <span className="option-letter">{String.fromCharCode(65 + i)}</span>
+            <span className="option-copy">{option}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grammar-input-wrap">
+      <input
+        className={`grammar-input ${feedback ? (feedback.correct ? 'correct' : 'wrong') : ''}`}
+        type="text"
+        value={selectedAnswer}
+        onChange={e => !feedback && setSelectedAnswer(e.target.value)}
+        placeholder="Введите ответ..."
+        disabled={!!feedback}
+        autoFocus
+      />
+    </div>
+  );
 }
 
 function LessonShell({ badge, title, subtitle, children }: LessonShellProps) {
@@ -106,9 +379,12 @@ export default function LessonPage() {
   const [xpEarned, setXpEarned] = useState(0);
   const [loading, setLoading] = useState(true);
   const [startTime] = useState(Date.now());
+  const [lockedMessage, setLockedMessage] = useState('');
 
   useEffect(() => {
     if (!lessonId) return;
+    setLockedMessage('');
+    setLoading(true);
     getLesson(parseInt(lessonId, 10))
       .then(res => {
         const data = res.data;
@@ -120,7 +396,14 @@ export default function LessonPage() {
         }
         setLesson(data);
       })
-      .catch(() => navigate('/'))
+      .catch((err) => {
+        if (err.response?.status === 403) {
+          setLesson(null);
+          setLockedMessage(err.response?.data?.error || 'Сначала завершите предыдущий раздел.');
+          return;
+        }
+        navigate('/');
+      })
       .finally(() => setLoading(false));
   }, [lessonId, navigate]);
 
@@ -139,7 +422,84 @@ export default function LessonPage() {
   }
 
   if (!lesson) {
+    if (lockedMessage) {
+      return (
+        <LessonShell
+          badge="Lesson locked"
+          title="Урок пока закрыт"
+          subtitle="Сначала нужно завершить предыдущий раздел, чтобы открыть этот урок."
+        >
+          <div className="lesson-container lesson-state-layout">
+            <div className="lesson-complete lesson-complete-card">
+              <div className="complete-icon">🔒</div>
+              <h2>Доступ ограничен</h2>
+              <p className="lesson-state-copy">{lockedMessage}</p>
+              <button className="lesson-btn continue" onClick={() => navigate(-1)}>
+                Вернуться назад
+              </button>
+            </div>
+          </div>
+        </LessonShell>
+      );
+    }
     return null;
+  }
+
+  if (completed) {
+    return (
+      <LessonShell
+        badge="Lesson complete"
+        title="Отличная работа"
+        subtitle="Ты завершил урок и можешь вернуться на дорожку, чтобы открыть следующий шаг."
+      >
+        <div className="lesson-container lesson-state-layout">
+          <div className="lesson-complete lesson-complete-card">
+            <div className="complete-icon">&#127881;</div>
+            <h2>Урок завершён!</h2>
+            <p className="complete-title">{lesson.title}</p>
+            <div className="complete-stats">
+              <div className="complete-stat">
+                <span className="stat-value">{xpEarned}</span>
+                <span className="stat-label">XP получено</span>
+              </div>
+              <div className="complete-stat">
+                <span className="stat-value">{finalAccuracy}%</span>
+                <span className="stat-label">Точность</span>
+              </div>
+              <div className="complete-stat">
+                <span className="stat-value">{mistakes}</span>
+                <span className="stat-label">Ошибки</span>
+              </div>
+            </div>
+            <button className="lesson-btn continue" onClick={() => navigate(-1)}>
+              Вернуться к модулю
+            </button>
+          </div>
+        </div>
+      </LessonShell>
+    );
+  }
+
+  if (lesson.type === 'theory') {
+    const handleTheoryComplete = async () => {
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+      try {
+        const res = await completeLesson(lesson.id, { score: 100, mistakes: 0, timeSpent });
+        setXpEarned(res.data.xp_earned);
+        await refreshUser();
+      } catch {}
+      setCompleted(true);
+    };
+
+    return (
+      <LessonShell
+        badge="Theory lesson"
+        title={lesson.title}
+        subtitle="Изучите теоретический материал и завершите урок, чтобы получить XP."
+      >
+        <TheoryLesson lesson={lesson} onComplete={handleTheoryComplete} />
+      </LessonShell>
+    );
   }
 
   if (!lesson.exercises || lesson.exercises.length === 0) {
@@ -221,41 +581,6 @@ export default function LessonPage() {
     setCompleted(true);
   };
 
-  if (completed) {
-    return (
-      <LessonShell
-        badge="Lesson complete"
-        title="Отличная работа"
-        subtitle="Ты завершил урок и можешь вернуться на дорожку, чтобы открыть следующий шаг."
-      >
-        <div className="lesson-container lesson-state-layout">
-          <div className="lesson-complete lesson-complete-card">
-            <div className="complete-icon">&#127881;</div>
-            <h2>Урок завершён!</h2>
-            <p className="complete-title">{lesson.title}</p>
-            <div className="complete-stats">
-              <div className="complete-stat">
-                <span className="stat-value">{xpEarned}</span>
-                <span className="stat-label">XP получено</span>
-              </div>
-              <div className="complete-stat">
-                <span className="stat-value">{finalAccuracy}%</span>
-                <span className="stat-label">Точность</span>
-              </div>
-              <div className="complete-stat">
-                <span className="stat-value">{mistakes}</span>
-                <span className="stat-label">Ошибки</span>
-              </div>
-            </div>
-            <button className="lesson-btn continue" onClick={() => navigate(-1)}>
-              Вернуться к модулю
-            </button>
-          </div>
-        </div>
-      </LessonShell>
-    );
-  }
-
   return (
     <LessonShell
       badge="Interactive lesson"
@@ -313,6 +638,27 @@ export default function LessonPage() {
                 disabled={!!feedback}
               />
             </div>
+          ) : exercise.type === 'listening' ? (
+            <ListeningExercise
+              exercise={exercise}
+              selectedAnswer={selectedAnswer}
+              setSelectedAnswer={setSelectedAnswer}
+              feedback={feedback}
+            />
+          ) : exercise.type === 'sentence' ? (
+            <SentenceExercise
+              exercise={exercise}
+              selectedAnswer={selectedAnswer}
+              setSelectedAnswer={setSelectedAnswer}
+              feedback={feedback}
+            />
+          ) : exercise.type === 'grammar' ? (
+            <GrammarExercise
+              exercise={exercise}
+              selectedAnswer={selectedAnswer}
+              setSelectedAnswer={setSelectedAnswer}
+              feedback={feedback}
+            />
           ) : (
             <div className="exercise-options">
               {exercise.options && exercise.options.map((option: string, i: number) => (

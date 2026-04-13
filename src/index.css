@@ -36,8 +36,12 @@
   --amber-400: #fbbf24;
   --amber-500: #f59e0b;
   --violet-500: #8b5cf6;
+  --violet-600: #7c3aed;
   --emerald-500: #10b981;
   --red-500: #ef4444;
+  --rose-50: #fff1f2;
+  --rose-100: #ffe4e6;
+  --rose-600: #e11d48;
   --accent-red: #ef4444;
   --font-family: 'Inter', system-ui, sans-serif;
   --font-display: 'Inter', system-ui, sans-serif;

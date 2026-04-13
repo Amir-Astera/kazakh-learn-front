@@ -9,8 +9,8 @@ interface Exercise {
   correct_answer: string; explanation: string; order_num: number;
 }
 
-const TYPES = ['translation','choice','sentence','listening','speaking'];
-const TYPE_LABELS: Record<string,string> = { translation:'Перевод', choice:'Выбор', sentence:'Предложение', listening:'Аудирование', speaking:'Произношение' };
+const TYPES = ['translation','choice','grammar','sentence','listening','speaking'];
+const TYPE_LABELS: Record<string,string> = { translation:'Перевод', choice:'Выбор', grammar:'Грамматика', sentence:'Предложение', listening:'Аудирование', speaking:'Произношение' };
 
 const empty = { lesson_id: 1, type: 'choice', question: '', options: '["Вариант 1","Вариант 2","Вариант 3","Вариант 4"]', correct_answer: '', explanation: '', order_num: 1 };
 
@@ -66,12 +66,18 @@ export default function AdminExercises() {
     await adminDeleteExercise(id); load(filterLesson);
   };
 
-  const needsOptions = form.type === 'choice' || form.type === 'translation';
+  const needsOptions = form.type === 'choice' || form.type === 'translation' || form.type === 'listening' || form.type === 'sentence' || (form.type === 'grammar' && form.options.trim() !== '');
   const exerciseHint = form.type === 'speaking'
     ? 'Для произношения в поле «Правильный ответ» укажите слово или фразу, которую ученик должен произнести.'
-    : needsOptions
-      ? 'Добавьте варианты ответа JSON-массивом и выберите один правильный ответ.'
-      : 'Заполните вопрос и правильный ответ для этого типа задания.';
+    : form.type === 'listening'
+      ? 'Аудирование: в «Правильный ответ» впишите слово которое будет произнесено TTS. В вариантах — варианты на выбор (JSON-массив).'
+      : form.type === 'sentence'
+        ? 'Сборка предложения: в «Варианты» укажите все слова JSON-массивом (включая лишние), в «Правильный ответ» — правильный порядок через пробел.'
+        : form.type === 'grammar'
+          ? 'Грамматика: если оставить варианты пустыми — ученик введёт ответ вручную. С вариантами — задание на выбор.'
+          : needsOptions
+            ? 'Добавьте варианты ответа JSON-массивом и выберите один правильный ответ.'
+            : 'Заполните вопрос и правильный ответ для этого типа задания.';
 
   return (
     <AdminLayout title="Задания">
@@ -151,9 +157,15 @@ export default function AdminExercises() {
               </div>
 
               <div className="admin-field"><label>Вопрос / Задание</label>
-                <textarea value={form.question} onChange={e => setForm({...form, question: e.target.value})} placeholder={form.type === 'speaking' ? 'Произнесите: "Сәлеметсіз бе"' : 'Переведите: "Привет"'} /></div>
+                <textarea value={form.question} onChange={e => setForm({...form, question: e.target.value})} placeholder={
+                  form.type === 'speaking' ? 'Произнесите: "Сәлеметсіз бе"'
+                  : form.type === 'listening' ? 'Прослушайте и выберите правильный перевод'
+                  : form.type === 'sentence' ? 'Составьте предложение: "Менің атым Амир"'
+                  : form.type === 'grammar' ? 'Вставьте пропущенное слово: "Менің ___ Амир"'
+                  : 'Переведите: "Привет"'
+                } /></div>
 
-              {needsOptions && (
+              {(form.type === 'choice' || form.type === 'translation' || form.type === 'listening' || form.type === 'sentence' || form.type === 'grammar') && (
                 <div className="admin-field">
                   <label>Варианты ответа (JSON массив)</label>
                   <textarea value={form.options} onChange={e => setForm({...form, options: e.target.value})} rows={3} placeholder='["Вариант 1","Вариант 2","Вариант 3","Вариант 4"]' />

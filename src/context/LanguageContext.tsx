@@ -6,6 +6,7 @@ type Lang = 'ru' | 'en';
 interface LanguageContextType {
   lang: Lang;
   toggle: () => void;
+  setLangChoice: (next: Lang) => void;
   t: (key: string) => string;
 }
 
@@ -33,6 +34,7 @@ const translations: Record<string, Record<Lang, string>> = {
 const LanguageContext = createContext<LanguageContextType>({
   lang: 'ru',
   toggle: () => {},
+  setLangChoice: () => {},
   t: (key) => key,
 });
 
@@ -41,10 +43,14 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem('lang') as Lang) || 'ru';
   });
 
-  const toggle = () => {
-    const next: Lang = lang === 'ru' ? 'en' : 'ru';
+  const setLangChoice = (next: Lang) => {
     setLang(next);
     localStorage.setItem('lang', next);
+  };
+
+  const toggle = () => {
+    const next: Lang = lang === 'ru' ? 'en' : 'ru';
+    setLangChoice(next);
   };
 
   const t = (key: string): string => {
@@ -52,7 +58,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <LanguageContext.Provider value={{ lang, toggle, t }}>
+    <LanguageContext.Provider value={{ lang, toggle, setLangChoice, t }}>
       {children}
     </LanguageContext.Provider>
   );

@@ -298,6 +298,7 @@ export default function ModulePage() {
   const [loading, setLoading] = useState(true);
   const [openUnitId, setOpenUnitId] = useState<number | null>(null);
   const [unitLessons, setUnitLessons] = useState<Record<number, Lesson[]>>({});
+  const [lockedUnitMessage, setLockedUnitMessage] = useState('');
 
   useEffect(() => {
     const requestedId = moduleId ? parseInt(moduleId, 10) : null;
@@ -307,6 +308,7 @@ export default function ModulePage() {
     }
 
     setLoading(true);
+    setLockedUnitMessage('');
     getLevels()
       .then((levelsRes) => {
         const levels = levelsRes.data as LevelData[];
@@ -328,9 +330,8 @@ export default function ModulePage() {
         if (!moduleRes) return;
         setModuleData(moduleRes.data);
         setUnitLessons({});
-        if (moduleRes.data.units.length > 0) {
-          setOpenUnitId(moduleRes.data.units[0].id);
-        }
+        const firstAccessibleUnit = moduleRes.data.units.find((unit: Unit) => unit.status !== 'locked') || null;
+        setOpenUnitId(firstAccessibleUnit?.id || null);
       })
       .catch(err => console.error('Error loading module:', err))
       .finally(() => setLoading(false));
@@ -340,7 +341,11 @@ export default function ModulePage() {
     if (unitLessons[unitId]) return;
     getUnitLessons(unitId)
       .then(res => setUnitLessons(prev => ({ ...prev, [unitId]: res.data })))
-      .catch(() => {});
+      .catch((err) => {
+        if (err.response?.status === 403) {
+          setLockedUnitMessage(err.response?.data?.error || 'Сначала завершите предыдущий раздел.');
+        }
+      });
   }, [unitLessons]);
 
   useEffect(() => {
@@ -361,6 +366,11 @@ export default function ModulePage() {
     <div className="app-layout">
       <Sidebar />
       <main className="path-section">
+        {lockedUnitMessage && (
+          <div className="module-locked-banner">
+            {lockedUnitMessage}
+          </div>
+        )}
         <div className="units-container">
           {moduleData.units.map((unit, idx) => {
             const isOpen = openUnitId === unit.id;
@@ -387,12 +397,17 @@ export default function ModulePage() {
             const nodeScale = getLessonNodeScale(lessons.length);
             const pathImageSrc = unit.path_image_url ? `${API_BASE}${unit.path_image_url}` : pathGreenImg;
             const handleToggleUnit = () => {
+              if (unit.status === 'locked') {
+                setLockedUnitMessage('Сначала завершите предыдущий раздел, чтобы открыть этот unit.');
+                return;
+              }
+              setLockedUnitMessage('');
               setOpenUnitId(prev => prev === unit.id ? null : unit.id);
             };
 
             return (
-              <div className="unit-block" key={unit.id}>
-                <div className="unit-header" style={{ background: gradient }} onClick={handleToggleUnit} role="button" tabIndex={0} onKeyDown={(event) => {
+              <div className={`unit-block ${unit.status === 'locked' ? 'locked-unit-block' : ''}`} key={unit.id}>
+                <div className={`unit-header ${unit.status === 'locked' ? 'locked-unit' : ''}`} style={{ background: gradient }} onClick={handleToggleUnit} role="button" tabIndex={0} onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     handleToggleUnit();

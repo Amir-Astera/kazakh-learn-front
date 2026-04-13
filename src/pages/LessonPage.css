@@ -684,3 +684,240 @@
     height: 32px;
   }
 }
+
+/* ─── Theory lesson ─────────────────────────────────────── */
+.theory-card {
+  overflow-y: auto;
+  max-height: 420px;
+}
+
+.theory-content {
+  padding: 4px 0;
+  line-height: 1.75;
+  color: var(--bg-night, #1a2236);
+}
+
+.theory-h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--bg-night, #1a2236);
+}
+
+.theory-h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 18px 0 8px;
+  color: var(--bg-night, #1a2236);
+  border-bottom: 2px solid #22c55e;
+  padding-bottom: 4px;
+}
+
+.theory-h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 14px 0 6px;
+  color: #16a34a;
+}
+
+.theory-p {
+  margin: 0 0 8px;
+  font-size: 0.97rem;
+}
+
+.theory-bold-line {
+  margin: 4px 0;
+  font-size: 0.97rem;
+}
+
+.theory-list {
+  margin: 6px 0 10px 18px;
+  padding: 0;
+  list-style: disc;
+}
+
+.theory-list li {
+  margin-bottom: 4px;
+  font-size: 0.95rem;
+  color: var(--bg-night, #1a2236);
+}
+
+.theory-spacer {
+  height: 6px;
+}
+
+/* ── Listening Exercise ────────────────────────────────── */
+.listening-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.listening-play-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.listening-play-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 0 #6d28d9;
+  flex-shrink: 0;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.listening-play-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 #6d28d9;
+}
+
+.listening-play-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #6d28d9;
+}
+
+.listening-play-btn.played {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 4px 0 #15803d;
+}
+
+.listening-hint {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* ── Sentence Builder ──────────────────────────────────── */
+.sentence-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sentence-drop-area {
+  min-height: 56px;
+  border: 2.5px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: #f8fafc;
+  transition: border-color 0.2s;
+}
+
+.sentence-drop-area:has(.sentence-word.chosen) {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.sentence-placeholder {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.sentence-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  background: #f1f5f9;
+  border-radius: 14px;
+  border: 1.5px solid #e2e8f0;
+}
+
+.sentence-word {
+  padding: 7px 14px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+}
+
+.sentence-word.bank {
+  background: #fff;
+  color: #1a2236;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 0 #cbd5e1;
+}
+
+.sentence-word.bank:hover:not(:disabled) {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #16a34a;
+  box-shadow: 0 2px 0 #86efac;
+}
+
+.sentence-word.bank.used,
+.sentence-word.bank:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.sentence-word.chosen {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd;
+  box-shadow: 0 2px 0 #93c5fd;
+}
+
+.sentence-word.chosen:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+  box-shadow: 0 2px 0 #fca5a5;
+}
+
+/* ── Grammar Input ─────────────────────────────────────── */
+.grammar-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grammar-input {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2.5px solid #e2e8f0;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a2236;
+  background: #f8fafc;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  box-sizing: border-box;
+}
+
+.grammar-input:focus {
+  border-color: #22c55e;
+  background: #fff;
+}
+
+.grammar-input.correct {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.grammar-input.wrong {
+  border-color: #ef4444;
+  background: #fef2f2;
+  color: #991b1b;
+}

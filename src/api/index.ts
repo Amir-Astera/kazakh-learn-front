@@ -15,13 +15,33 @@ api.interceptors.request.use((config) => {
 });
 
 // Auth
+export interface RegisterPayload {
+  email: string;
+  password: string;
+  name: string;
+  language_pair: 'ru-kz' | 'en-kz';
+  learning_goal: 'general' | 'travel' | 'study' | 'work';
+  proficiency_level: 'beginner' | 'elementary' | 'intermediate';
+}
+
 export const login = (email: string, password: string) =>
   api.post('/auth/login', { email, password });
 
-export const register = (email: string, password: string, name: string) =>
-  api.post('/auth/register', { email, password, name });
+export const register = (payload: RegisterPayload) =>
+  api.post('/auth/register', payload);
 
 export const getMe = () => api.get('/auth/me');
+
+export interface UpdateProfilePayload {
+  name: string;
+  avatar_url: string | null;
+  language_pair: 'ru-kz' | 'en-kz';
+  learning_goal: 'general' | 'travel' | 'study' | 'work';
+  proficiency_level: 'beginner' | 'elementary' | 'intermediate';
+}
+
+export const updateProfile = (payload: UpdateProfilePayload) =>
+  api.put('/auth/profile', payload);
 
 // Modules
 export const getLevels = () => api.get('/modules/levels');
@@ -90,5 +110,14 @@ export const adminGetExercises = (lessonId?: number) =>
 export const adminCreateExercise = (data: object) => api.post('/admin/exercises', data);
 export const adminUpdateExercise = (id: number, data: object) => api.put(`/admin/exercises/${id}`, data);
 export const adminDeleteExercise = (id: number) => api.delete(`/admin/exercises/${id}`);
+
+// Chat
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export const sendChatMessage = (messages: ChatMessage[]) =>
+  api.post('/chat', { messages });
 
 export default api;

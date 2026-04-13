@@ -2,13 +2,19 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { getMe } from '../api';
 
 interface User {
-  id: number;
+  id: number | string;
   email: string;
   name: string;
   xp: number;
   streak: number;
   avatar_url?: string;
   last_activity?: string;
+  is_admin?: boolean;
+  language_pair?: 'ru-kz' | 'en-kz';
+  learning_goal?: 'general' | 'travel' | 'study' | 'work';
+  proficiency_level?: 'beginner' | 'elementary' | 'intermediate';
+  onboarding_completed?: boolean;
+  created_at?: string;
 }
 
 interface AuthContextType {

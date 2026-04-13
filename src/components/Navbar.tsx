@@ -25,6 +25,12 @@ export default function Navbar() {
         <a className={`nav-link ${isActive('/') || location.pathname.startsWith('/module') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Home</a>
         <a className="nav-link" href="#" onClick={(e) => e.preventDefault()}>AI help</a>
         <a className={`nav-link ${isActive('/rating') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/rating'); }}>Rating</a>
+        <a className={`nav-link ${isActive('/profile') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/profile'); }}>Profile</a>
+        {user?.is_admin && (
+          <a className={`nav-link admin-link ${location.pathname.startsWith('/admin') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/admin'); }}>
+            Admin Panel
+          </a>
+        )}
       </div>
 
       <div className="nav-right">
@@ -42,11 +48,19 @@ export default function Navbar() {
           <span className="badge-val">{user?.xp || 0}</span>
         </div>
 
-        <div className="nav-avatar" onClick={logout} title="Logout">
+        <button className="nav-profile-btn" type="button" onClick={() => navigate('/profile')} title="Profile settings">
+          {user?.name || 'Profile'}
+        </button>
+
+        <div className="nav-avatar" onClick={() => navigate('/profile')} title="Open profile">
           <div className="nav-avatar-placeholder">
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
         </div>
+
+        <button className="nav-logout-btn" type="button" onClick={logout}>
+          Logout
+        </button>
       </div>
     </nav>
   );

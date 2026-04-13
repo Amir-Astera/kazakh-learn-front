@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getDashboard, getLevels } from '../api';
 import './Sidebar.css';
@@ -99,6 +100,7 @@ const skillIconPaths: Record<string, { d: string; fill: string }> = {
 
 export default function Sidebar() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
   const [reminder, setReminder] = useState<Reminder | null>(null);
@@ -171,7 +173,7 @@ export default function Sidebar() {
           <div className="reminder-content">
             <h4>{reminder.title}</h4>
             <p>{reminder.message}</p>
-            <button className="btn-primary">Повторить слова</button>
+            <button className="btn-primary" onClick={() => navigate('/')}>Повторить слова</button>
           </div>
         </div>
       )}
@@ -206,6 +208,18 @@ export default function Sidebar() {
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* AI Chat */}
+      <div className="paper-card sidebar-chat-card" onClick={() => navigate('/chat')} style={{ cursor: 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>🤖</div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--bg-night, #1a2236)' }}>AI Ассистент</div>
+            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Вопросы по казахскому языку</div>
+          </div>
+          <svg style={{ marginLeft: 'auto', flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </div>
       </div>
 

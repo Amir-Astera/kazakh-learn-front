@@ -161,3 +161,73 @@
   color: var(--bg-night);
   line-height: 1.4;
 }
+
+.speech-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.speech-phonetic {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-style: italic;
+  letter-spacing: 0.5px;
+}
+
+.speech-similarity {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.speech-correct-hint {
+  font-size: 0.83rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.speech-attempts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.speech-attempt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  transition: background 0.2s;
+}
+
+.speech-attempt-dot.used {
+  background: #ef4444;
+}
+
+.speech-no-support {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 20px;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 0.88rem;
+  color: #475569;
+}
+
+.speech-no-support span {
+  font-size: 2rem;
+}
+
+.speech-no-support p {
+  margin: 0;
+}
+
+.speech-no-support-hint {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
