@@ -1,13 +1,15 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+﻿import { useEffect, useState, useCallback, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getLevels, getModule, getUnitLessons } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LanguageContext';
 import Sidebar from '../components/Sidebar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import './ModulePage.css';
 
 import pathGreenImg from '../assets/path-green.png';
+import { API_ORIGIN } from '../config/apiBase';
 
 interface Landmark {
   id: number;
@@ -18,7 +20,7 @@ interface Landmark {
 
 interface Unit {
   id: number;
-  title: string;
+  title?: string;
   title_kz: string;
   subtitle: string;
   icon: string;
@@ -280,8 +282,6 @@ function getHighestUnlockedModule(levels: LevelData[], xp: number) {
   return modules.filter(module => (module.required_xp || 0) <= xp).at(-1) || modules[0] || null;
 }
 
-const API_BASE = 'http://localhost:5000';
-
 const UNIT_GRADIENTS = [
   'linear-gradient(135deg, #f97316, #ef4444)',
   'linear-gradient(135deg, #6366f1, #3b82f6)',
@@ -291,10 +291,12 @@ const UNIT_GRADIENTS = [
 ];
 
 export default function ModulePage() {
+  const { t, lang } = useLang();
   const { moduleId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [moduleData, setModuleData] = useState<ModuleData | null>(null);
+  const [levelsData, setLevelsData] = useState<LevelData[]>([]);
   const [loading, setLoading] = useState(true);
   const [openUnitId, setOpenUnitId] = useState<number | null>(null);
   const [unitLessons, setUnitLessons] = useState<Record<number, Lesson[]>>({});
@@ -312,6 +314,7 @@ export default function ModulePage() {
     getLevels()
       .then((levelsRes) => {
         const levels = levelsRes.data as LevelData[];
+        setLevelsData(levels);
         const unlockedModule = getHighestUnlockedModule(levels, user?.xp || 0);
         const flatModules = flattenModules(levels);
         const requestedModule = requestedId ? flatModules.find(module => module.id === requestedId) || null : null;
@@ -337,16 +340,37 @@ export default function ModulePage() {
       .finally(() => setLoading(false));
   }, [moduleId, navigate, user?.xp]);
 
+  const levelProgress = useMemo(() => {
+    const xp = user?.xp ?? 0;
+    if (!moduleData || levelsData.length === 0) {
+      return { showNextLevel: false, nextModuleId: null as number | null };
+    }
+    const moduleLevel = levelsData.find((level) => level.modules.some((m) => m.id === moduleData.id));
+    const sortedLevels = [...levelsData].sort((a, b) => a.order_num - b.order_num);
+    const nextLevel = moduleLevel ? sortedLevels.find((l) => l.order_num > moduleLevel.order_num) : null;
+    const nextLevelRequirement = nextLevel && nextLevel.modules.length > 0
+      ? Math.min(...nextLevel.modules.map((m) => m.required_xp || 0))
+      : null;
+    const showNextLevel = Boolean(
+      moduleLevel &&
+      nextLevel &&
+      nextLevelRequirement != null &&
+      xp >= nextLevelRequirement,
+    );
+    const sortedNextMods = nextLevel ? [...nextLevel.modules].sort((a, b) => a.order_num - b.order_num) : [];
+    const nextModuleId = sortedNextMods[0]?.id ?? null;
+    return { showNextLevel, nextModuleId };
+  }, [moduleData, levelsData, user?.xp]);
+
   const loadLessons = useCallback((unitId: number) => {
-    if (unitLessons[unitId]) return;
     getUnitLessons(unitId)
       .then(res => setUnitLessons(prev => ({ ...prev, [unitId]: res.data })))
       .catch((err) => {
         if (err.response?.status === 403) {
-          setLockedUnitMessage(err.response?.data?.error || 'Сначала завершите предыдущий раздел.');
+          setLockedUnitMessage(t('module.lockedPrev'));
         }
       });
-  }, [unitLessons]);
+  }, [t]);
 
   useEffect(() => {
     if (openUnitId) loadLessons(openUnitId);
@@ -356,7 +380,7 @@ export default function ModulePage() {
     return (
       <div className="app-layout">
         <main className="path-section">
-          <LoadingSpinner message="Загрузка модуля..." />
+          <LoadingSpinner messageKey="module.loading" />
         </main>
       </div>
     );
@@ -366,6 +390,14 @@ export default function ModulePage() {
     <div className="app-layout">
       <Sidebar />
       <main className="path-section">
+        {levelProgress.showNextLevel && levelProgress.nextModuleId != null && (
+          <div className="module-next-level-banner">
+            <p>{t('module.nextLevelBanner')}</p>
+            <button type="button" className="module-next-level-btn" onClick={() => navigate(`/module/${levelProgress.nextModuleId}`)}>
+              {t('module.nextLevelBtn')}
+            </button>
+          </div>
+        )}
         {lockedUnitMessage && (
           <div className="module-locked-banner">
             {lockedUnitMessage}
@@ -395,10 +427,15 @@ export default function ModulePage() {
                   }))
               : [];
             const nodeScale = getLessonNodeScale(lessons.length);
-            const pathImageSrc = unit.path_image_url ? `${API_BASE}${unit.path_image_url}` : pathGreenImg;
+            const pathImageSrc = unit.path_image_url ? `${API_ORIGIN}${unit.path_image_url}` : pathGreenImg;
+            const titleLine = lang === 'en' && unit.title?.trim()
+              ? unit.title.trim()
+              : (unit.title_kz || unit.title || '').trim();
+            const sub = unit.subtitle?.trim();
+            const unitHeaderSub = sub ? `${titleLine} • ${sub}` : titleLine;
             const handleToggleUnit = () => {
               if (unit.status === 'locked') {
-                setLockedUnitMessage('Сначала завершите предыдущий раздел, чтобы открыть этот unit.');
+                setLockedUnitMessage(t('module.lockedUnit'));
                 return;
               }
               setLockedUnitMessage('');
@@ -420,13 +457,13 @@ export default function ModulePage() {
                       </svg>
                     </div>
                     <div className="unit-header-info">
-                      <div className="unit-header-title">Unit {unit.order_num}</div>
-                      <div className="unit-header-sub">{unit.title_kz} • {unit.subtitle}</div>
+                      <div className="unit-header-title">{t('module.unitOrder').replace('{n}', String(unit.order_num))}</div>
+                      <div className="unit-header-sub">{unitHeaderSub}</div>
                     </div>
                   </div>
                   <div className="unit-header-right">
                     <div className="unit-progress-bar">
-                      <span className="unit-progress-label">Прогресс: {progress}%</span>
+                      <span className="unit-progress-label">{t('module.unitProgress').replace('{p}', String(progress))}</span>
                       <div className="unit-progress-track">
                         <div className="unit-progress-fill" style={{ width: `${progress}%` }} />
                       </div>
@@ -453,7 +490,7 @@ export default function ModulePage() {
                             height: landmarkPlacement.height,
                           }}
                         >
-                          <img src={`${API_BASE}${landmarkPlacement.image_url}`} alt={landmarkPlacement.alt_text || ''} />
+                          <img src={`${API_ORIGIN}${landmarkPlacement.image_url}`} alt={landmarkPlacement.alt_text || ''} />
                         </div>
                       ))}
 
@@ -500,7 +537,7 @@ export default function ModulePage() {
 
                       {lessons.length === 0 && isOpen && (
                         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: 'rgba(255,255,255,0.9)', padding: '16px 24px', borderRadius: 12, fontWeight: 600, color: '#475569', fontSize: '0.9rem', backdropFilter: 'blur(4px)' }}>
-                          Загрузка уроков...
+                          {t('module.loadingLessons')}
                         </div>
                       )}
                     </div>

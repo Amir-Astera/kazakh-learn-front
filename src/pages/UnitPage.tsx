@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getUnitLessons } from '../api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useLang } from '../context/LanguageContext';
 import './UnitPage.css';
 
 interface Lesson {
@@ -16,11 +17,18 @@ interface Lesson {
 }
 
 export default function UnitPage() {
+  const { t } = useLang();
   const { unitId } = useParams();
   const navigate = useNavigate();
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [lockedMessage, setLockedMessage] = useState('');
+
+  const typeLabel = (type: string) => {
+    const key = `unitType.${type}`;
+    const val = t(key);
+    return val !== key ? val : type;
+  };
 
   useEffect(() => {
     if (!unitId) return;
@@ -31,23 +39,13 @@ export default function UnitPage() {
       .catch((err) => {
         if (err.response?.status === 403) {
           setLessons([]);
-          setLockedMessage(err.response?.data?.error || 'Сначала завершите предыдущий раздел.');
+          setLockedMessage(err.response?.data?.error || t('module.lockedPrev'));
           return;
         }
         navigate('/');
       })
       .finally(() => setLoading(false));
-  }, [unitId, navigate]);
-
-  const typeLabels: Record<string, string> = {
-    translation: 'Перевод',
-    choice: 'Выбор ответа',
-    grammar: 'Грамматика',
-    sentence: 'Составление',
-    listening: 'Аудирование',
-    speaking: 'Произношение',
-    theory: 'Теория',
-  };
+  }, [unitId, navigate, t]);
 
   const typeColors: Record<string, string> = {
     translation: 'var(--blue-500)',
@@ -71,7 +69,7 @@ export default function UnitPage() {
     return (
       <div className="unit-page">
         <div className="unit-container">
-          <LoadingSpinner message="Загрузка уроков..." />
+          <LoadingSpinner messageKey="unit.loading" />
         </div>
       </div>
     );
@@ -85,7 +83,7 @@ export default function UnitPage() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
             </svg>
-            Назад к модулю
+            {t('unit.back')}
           </button>
 
           <div className="unit-empty-state">
@@ -103,20 +101,20 @@ export default function UnitPage() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
           </svg>
-          Назад к модулю
+          {t('unit.back')}
         </button>
 
         <section className="unit-hero">
           <div className="unit-hero-main">
-            <span className="unit-badge">Unit {unitId}</span>
-            <h1 className="unit-title">Список уроков</h1>
+            <span className="unit-badge">{t('unit.badge')} {unitId}</span>
+            <h1 className="unit-title">{t('unit.listTitle')}</h1>
             <p className="unit-subtitle">
-              Проходи уроки по порядку. Следующий урок открывается после завершения предыдущего.
+              {t('unit.listSub')}
             </p>
 
             <div className="unit-progress-panel">
               <div className="unit-progress-topline">
-                <span>Прогресс юнита</span>
+                <span>{t('unit.progressLabel')}</span>
                 <strong>{progress}%</strong>
               </div>
               <div className="unit-progress-track">
@@ -127,24 +125,24 @@ export default function UnitPage() {
             <div className="unit-stats-grid">
               <div className="unit-stat-card">
                 <span className="unit-stat-value">{completedCount}/{totalLessons}</span>
-                <span className="unit-stat-label">Завершено уроков</span>
+                <span className="unit-stat-label">{t('unit.statDone')}</span>
               </div>
               <div className="unit-stat-card">
                 <span className="unit-stat-value">{lessons.reduce((sum, lesson) => sum + lesson.xp_reward, 0)}</span>
-                <span className="unit-stat-label">XP в юните</span>
+                <span className="unit-stat-label">{t('unit.statXp')}</span>
               </div>
               <div className="unit-stat-card">
                 <span className="unit-stat-value">{nextLesson ? nextLesson.order_num : '—'}</span>
-                <span className="unit-stat-label">Следующий урок</span>
+                <span className="unit-stat-label">{t('unit.statNext')}</span>
               </div>
             </div>
           </div>
 
           <div className="unit-hero-side">
             <div className="unit-next-card">
-              <div className="unit-next-title">Готов продолжить?</div>
+              <div className="unit-next-title">{t('unit.nextTitle')}</div>
               <div className="unit-next-desc">
-                {nextLesson ? nextLesson.title : 'Уроки появятся здесь, когда юнит будет заполнен.'}
+                {nextLesson ? nextLesson.title : t('unit.nextEmpty')}
               </div>
               <button
                 type="button"
@@ -152,7 +150,7 @@ export default function UnitPage() {
                 onClick={() => nextLesson && navigate(`/lesson/${nextLesson.id}`)}
                 disabled={!nextLesson}
               >
-                {nextLesson ? 'Открыть следующий урок' : 'Пока нет уроков'}
+                {nextLesson ? t('unit.openNext') : t('unit.noLessons')}
               </button>
             </div>
           </div>
@@ -163,7 +161,7 @@ export default function UnitPage() {
             const isLocked = index > 0 && !lessons[index - 1].completed && !lesson.completed;
             const isNext = !lesson.completed && !isLocked;
             const completionTone = lesson.completed ? (lesson.mistakes === 0 ? 'perfect' : 'with-mistakes') : '';
-            
+
             return (
               <button
                 key={lesson.id}
@@ -181,7 +179,7 @@ export default function UnitPage() {
                       : isLocked
                         ? 'rgba(148,163,184,0.24)'
                         : typeColors[lesson.type] || 'var(--blue-500)'
-                }}>
+                  }}>
                     {lesson.completed ? (
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
                       <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
@@ -198,14 +196,14 @@ export default function UnitPage() {
                   <div className="lesson-card-info">
                     <div className="lesson-card-title-row">
                       <div className="lesson-card-title">{lesson.title}</div>
-                      {isNext && <span className="lesson-next-pill">Сейчас</span>}
+                      {isNext && <span className="lesson-next-pill">{t('unit.pillNow')}</span>}
                     </div>
                     <div className="lesson-card-meta">
                       <span className="lesson-type-tag" style={{ color: typeColors[lesson.type] }}>
-                        {typeLabels[lesson.type] || lesson.type}
+                        {typeLabel(lesson.type)}
                       </span>
                       <span className="lesson-xp">+{lesson.xp_reward} XP</span>
-                      <span className="lesson-order-pill">Урок {lesson.order_num}</span>
+                      <span className="lesson-order-pill">{t('unit.lessonN')} {lesson.order_num}</span>
                     </div>
                   </div>
                 </div>
@@ -228,7 +226,7 @@ export default function UnitPage() {
 
           {lessons.length === 0 && (
             <div className="unit-empty-state">
-              В этом юните пока нет уроков.
+              {t('unit.emptyUnit')}
             </div>
           )}
         </div>

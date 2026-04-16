@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_URL = 'http://localhost:5000/api';
+import { API_URL } from '../config/apiBase';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -32,6 +31,12 @@ export const login = (email: string, password: string) =>
 export const register = (payload: RegisterPayload) =>
   api.post('/auth/register', payload);
 
+export const forgotPassword = (email: string) =>
+  api.post('/auth/forgot-password', { email });
+
+export const resetPassword = (token: string, password: string) =>
+  api.post('/auth/reset-password', { token, password });
+
 export interface OnboardingPayload {
   age: number;
   weekly_study_minutes: number;
@@ -47,14 +52,20 @@ export const getMe = () => api.get('/auth/me');
 
 export interface UpdateProfilePayload {
   name: string;
-  avatar_url: string | null;
+  avatar_url?: string | null;
   language_pair: 'ru-kz' | 'en-kz';
   learning_goal: 'general' | 'travel' | 'study' | 'work';
-  proficiency_level: 'beginner' | 'elementary' | 'intermediate';
+  proficiency_level?: 'beginner' | 'elementary' | 'intermediate';
 }
 
 export const updateProfile = (payload: UpdateProfilePayload) =>
   api.put('/auth/profile', payload);
+
+export const uploadAvatar = (file: File) => {
+  const body = new FormData();
+  body.append('avatar', file);
+  return api.post('/auth/avatar', body, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
 
 // Modules
 export const getLevels = () => api.get('/modules/levels');

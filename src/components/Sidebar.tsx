@@ -1,7 +1,9 @@
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LanguageContext';
 import { getDashboard, getLevels } from '../api';
+import { resolveMediaUrl, AVATAR_IMG_REFERRER_POLICY } from '../config/apiBase';
 import './Sidebar.css';
 
 interface Skill {
@@ -20,8 +22,9 @@ interface Quest {
 }
 
 interface Reminder {
-  title: string;
-  message: string;
+  title?: string;
+  message?: string;
+  skill_name?: string;
 }
 
 interface LevelModule {
@@ -47,13 +50,6 @@ const skillColors: Record<string, string> = {
   speaking: '#f97316',
 };
 
-const skillLabels: Record<string, string> = {
-  vocabulary: 'Vocabulary',
-  grammar: 'Grammar',
-  listening: 'Listening',
-  speaking: 'Speaking',
-};
-
 const skillIconPaths: Record<string, { d: string; fill: string }> = {
   vocabulary: {
     fill: 'none',
@@ -73,16 +69,17 @@ const skillIconPaths: Record<string, { d: string; fill: string }> = {
   },
 };
  
- const cefrNames: Record<string, string> = {
-   A1: 'Beginner',
-   A2: 'Elementary',
-   B1: 'Intermediate',
-   B2: 'Upper-Intermediate',
-   C1: 'Advanced',
-   C2: 'Proficiency',
- };
- 
- function flattenModules(levels: LevelData[]) {
+function questDisplayName(quest: Quest, translate: (key: string) => string) {
+  if (quest.quest_type === 'words') {
+    return translate('quest.words').replace('{target}', String(quest.target));
+  }
+  if (quest.quest_type === 'lessons') {
+    return translate('quest.lessons').replace('{target}', String(quest.target));
+  }
+  return quest.quest_name;
+}
+
+function flattenModules(levels: LevelData[]) {
    return [...levels]
      .sort((a, b) => a.order_num - b.order_num)
      .flatMap(level =>
@@ -100,6 +97,7 @@ const skillIconPaths: Record<string, { d: string; fill: string }> = {
 
 export default function Sidebar() {
   const { user } = useAuth();
+  const { t } = useLang();
   const navigate = useNavigate();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [quests, setQuests] = useState<Quest[]>([]);
@@ -134,7 +132,9 @@ export default function Sidebar() {
     ? 100
     : Math.min(100, Math.max(0, ((xp - currentLevelFloor) / Math.max(1, nextLevelRequirement - currentLevelFloor)) * 100));
   const currentLevelCode = currentLevel?.code || 'A1';
-  const currentLevelName = cefrNames[currentLevelCode] || currentLevel?.name || 'Beginner';
+  const cefrKey = `cefr.${currentLevelCode}`;
+  const cefrTranslated = t(cefrKey);
+  const currentLevelName = (cefrTranslated !== cefrKey ? cefrTranslated : null) || currentLevel?.name || t('cefr.A1');
 
   return (
     <aside className="dashboard-section">
@@ -143,13 +143,17 @@ export default function Sidebar() {
         <div className="user-card-top">
           <div className="user-card-avatar-wrap">
             <div className="user-card-avatar">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              {user?.avatar_url ? (
+                <img src={resolveMediaUrl(user.avatar_url) || ''} alt="" className="user-card-avatar-img" referrerPolicy={AVATAR_IMG_REFERRER_POLICY} />
+              ) : (
+                user?.name?.charAt(0)?.toUpperCase() || 'U'
+              )}
             </div>
             <div className="user-card-level-badge">{currentLevelCode}</div>
           </div>
           <div>
             <h2 className="user-card-name">{currentLevelName}</h2>
-            <p className="user-card-sub">Уровень CEFR: {currentLevelCode}{currentLevel?.name ? ` • ${currentLevel.name}` : ''}</p>
+            <p className="user-card-sub">{t('sidebar.cefrPrefix')} {currentLevelCode}{currentLevel?.name ? ` • ${currentLevel.name}` : ''}</p>
           </div>
         </div>
         <div className="user-xp-bar">
@@ -157,8 +161,11 @@ export default function Sidebar() {
         </div>
         <p className="user-xp-label">
           {nextLevelRequirement == null
-            ? `${xp} XP • максимальный уровень открыт`
-            : `${xp} / ${nextLevelRequirement} XP до ${nextLevel?.code}`}
+            ? t('sidebar.xpBarMax').replace('{xp}', String(xp))
+            : t('sidebar.xpBarNext')
+              .replace('{xp}', String(xp))
+              .replace('{need}', String(nextLevelRequirement))
+              .replace('{code}', String(nextLevel?.code ?? ''))}
         </p>
       </div>
 
@@ -171,9 +178,18 @@ export default function Sidebar() {
             </svg>
           </div>
           <div className="reminder-content">
-            <h4>{reminder.title}</h4>
-            <p>{reminder.message}</p>
-            <button type="button" className="btn-primary" onClick={() => navigate('/review-words')}>Повторить слова</button>
+            <h4>{reminder.skill_name ? t('sidebar.reminderTitle') : (reminder.title || t('sidebar.reminderTitle'))}</h4>
+            <p>
+              {reminder.skill_name
+                ? t('sidebar.reminderMsg').replace(
+                    '{skill}',
+                    t(`skill.${reminder.skill_name}`) !== `skill.${reminder.skill_name}`
+                      ? t(`skill.${reminder.skill_name}`)
+                      : reminder.skill_name,
+                  )
+                : (reminder.message || '')}
+            </p>
+            <button type="button" className="btn-primary" onClick={() => navigate('/review-words')}>{t('sidebar.reviewWords')}</button>
           </div>
         </div>
       )}
@@ -181,7 +197,7 @@ export default function Sidebar() {
       {/* Skills */}
       <div className="paper-card">
         <div className="card-header">
-          <span className="card-title">Skill Mastery</span>
+          <span className="card-title">{t('sidebar.skills')}</span>
         </div>
         <div className="rings-grid">
           {skills.map(skill => {
@@ -204,7 +220,7 @@ export default function Sidebar() {
                     </svg>
                   )}
                 </div>
-                <span className="ring-label">{skillLabels[skill.skill_name] || skill.skill_name}</span>
+                <span className="ring-label">{t(`skill.${skill.skill_name}`) !== `skill.${skill.skill_name}` ? t(`skill.${skill.skill_name}`) : skill.skill_name}</span>
               </div>
             );
           })}
@@ -216,8 +232,8 @@ export default function Sidebar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>🤖</div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--bg-night, #1a2236)' }}>AI Ассистент</div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Вопросы по казахскому языку</div>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--bg-night, #1a2236)' }}>{t('sidebar.aiTitle')}</div>
+            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{t('sidebar.aiSubtitle')}</div>
           </div>
           <svg style={{ marginLeft: 'auto', flexShrink: 0 }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </div>
@@ -229,7 +245,7 @@ export default function Sidebar() {
           <svg width="16" height="16" viewBox="0 0 20 20" fill="#f59e0b">
             <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
           </svg>
-          Daily Quests
+          {t('sidebar.quests')}
         </h3>
         <div className="quest-list">
           {quests.map(quest => {
@@ -245,7 +261,7 @@ export default function Sidebar() {
                   )}
                 </div>
                 <div className="quest-details">
-                  <p className="quest-name">{quest.quest_name}</p>
+                  <p className="quest-name">{questDisplayName(quest, t)}</p>
                   {!isDone && (
                     <div className="quest-progress-row">
                       <div className="progress-track">

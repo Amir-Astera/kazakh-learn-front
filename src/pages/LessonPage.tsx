@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getLesson, submitAnswer, completeLesson } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LanguageContext';
 import SpeechInput from '../components/SpeechInput';
 import './LessonPage.css';
 import mascotImg from '../assets/ChatGPT Image 6 мар. 2026 г., 23_45_55.png';
@@ -41,26 +42,11 @@ type LessonShellProps = {
   children: ReactNode;
 };
 
-function getExerciseTypeLabel(type: string) {
-  switch (type) {
-    case 'speaking':
-      return 'Практика произношения';
-    case 'choice':
-    case 'multiple_choice':
-      return 'Выберите правильный ответ';
-    case 'translation':
-      return 'Перевод';
-    case 'sentence':
-      return 'Соберите предложение';
-    case 'listening':
-      return 'Аудирование';
-    case 'grammar':
-      return 'Грамматика';
-    case 'theory':
-      return 'Теоретический урок';
-    default:
-      return 'Задание урока';
-  }
+function getExerciseTypeLabel(type: string, t: (key: string) => string) {
+  const norm = type === 'multiple_choice' ? 'choice' : type;
+  const key = `lessonType.${norm}`;
+  const val = t(key);
+  return val !== key ? val : t('lessonType.default');
 }
 
 function renderSimpleMarkdown(text: string): ReactNode[] {
@@ -115,6 +101,7 @@ function renderSimpleMarkdown(text: string): ReactNode[] {
 }
 
 function TheoryLesson({ lesson, onComplete }: { lesson: LessonData; onComplete: () => void }) {
+  const { t } = useLang();
   const [page, setPage] = useState(0);
   const content = lesson.content || '';
   const sections = content.split(/\n---\n/).map(s => s.trim()).filter(Boolean);
@@ -126,7 +113,7 @@ function TheoryLesson({ lesson, onComplete }: { lesson: LessonData; onComplete: 
     <div className="lesson-container">
       <div className="lesson-header lesson-header-card">
         <div className="lesson-header-copy">
-          <span className="lesson-kicker">Теоретический урок</span>
+          <span className="lesson-kicker">{t('theory.kicker')}</span>
           <h1 className="lesson-title">{lesson.title}</h1>
         </div>
         <div className="lesson-progress-stack">
@@ -145,16 +132,16 @@ function TheoryLesson({ lesson, onComplete }: { lesson: LessonData; onComplete: 
 
       <div className="lesson-footer lesson-footer-card">
         <div className="lesson-footer-copy">
-          {isLast ? 'Последняя карточка. Завершите урок чтобы получить XP.' : 'Изучите материал и переходите к следующей карточке.'}
+          {isLast ? t('theory.footerLast') : t('theory.footerMore')}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {page > 0 && (
-            <button className="lesson-btn check" onClick={() => setPage(p => p - 1)}>Назад</button>
+            <button className="lesson-btn check" onClick={() => setPage(p => p - 1)}>{t('lesson.back')}</button>
           )}
           {!isLast ? (
-            <button className="lesson-btn continue" onClick={() => setPage(p => p + 1)}>Далее</button>
+            <button className="lesson-btn continue" onClick={() => setPage(p => p + 1)}>{t('lesson.next')}</button>
           ) : (
-            <button className="lesson-btn continue" onClick={onComplete}>Завершить урок</button>
+            <button className="lesson-btn continue" onClick={onComplete}>{t('theory.complete')}</button>
           )}
         </div>
       </div>
@@ -171,6 +158,7 @@ function ListeningExercise({
   setSelectedAnswer: (v: string) => void;
   feedback: FeedbackState;
 }) {
+  const { t } = useLang();
   const [played, setPlayed] = useState(false);
 
   const speak = () => {
@@ -192,7 +180,7 @@ function ListeningExercise({
           </svg>
         </button>
         <div className="listening-hint">
-          {played ? 'Прослушайте ещё раз и выберите ответ' : 'Нажмите чтобы прослушать слово'}
+          {played ? t('listening.hintAfter') : t('listening.hintBefore')}
         </div>
       </div>
       <div className="exercise-options">
@@ -226,6 +214,7 @@ function SentenceExercise({
   setSelectedAnswer: (v: string) => void;
   feedback: FeedbackState;
 }) {
+  const { t } = useLang();
   const words = selectedAnswer ? selectedAnswer.split(' ').filter(Boolean) : [];
   const allWords = exercise.options || [];
   // Count usage per word to handle duplicates
@@ -256,7 +245,7 @@ function SentenceExercise({
     <div className="sentence-wrap">
       <div className="sentence-drop-area">
         {words.length === 0 && (
-          <span className="sentence-placeholder">Нажимайте на слова чтобы составить предложение</span>
+          <span className="sentence-placeholder">{t('sentence.placeholder')}</span>
         )}
         {words.map((word, i) => (
           <button key={i} className="sentence-word chosen" onClick={() => removeWord(i)} type="button" disabled={!!feedback}>
@@ -290,6 +279,7 @@ function GrammarExercise({
   setSelectedAnswer: (v: string) => void;
   feedback: FeedbackState;
 }) {
+  const { t } = useLang();
   // If options exist — render as choice; if no options — free text input
   const hasOptions = exercise.options && exercise.options.length > 0;
 
@@ -323,7 +313,7 @@ function GrammarExercise({
         type="text"
         value={selectedAnswer}
         onChange={e => !feedback && setSelectedAnswer(e.target.value)}
-        placeholder="Введите ответ..."
+        placeholder={t('grammar.placeholder')}
         disabled={!!feedback}
         autoFocus
       />
@@ -366,6 +356,7 @@ function LessonShell({ badge, title, subtitle, children }: LessonShellProps) {
 }
 
 export default function LessonPage() {
+  const { t } = useLang();
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
@@ -401,23 +392,23 @@ export default function LessonPage() {
       .catch((err) => {
         if (err.response?.status === 403) {
           setLesson(null);
-          setLockedMessage(err.response?.data?.error || 'Сначала завершите предыдущий раздел.');
+          setLockedMessage(err.response?.data?.error || t('module.lockedPrev'));
           return;
         }
         navigate('/');
       })
       .finally(() => setLoading(false));
-  }, [lessonId, navigate]);
+  }, [lessonId, navigate, t]);
 
   if (loading) {
     return (
       <LessonShell
-        badge="Lesson mode"
-        title="Подготавливаем урок"
-        subtitle="Загружаю упражнения, прогресс и практические задания."
+        badge={t('lesson.badgeLoading')}
+        title={t('lesson.titleLoading')}
+        subtitle={t('lesson.subLoading')}
       >
         <div className="lesson-container lesson-state-layout">
-          <div className="lesson-loading">Загрузка урока...</div>
+          <div className="lesson-loading">{t('lesson.loadingInner')}</div>
         </div>
       </LessonShell>
     );
@@ -427,17 +418,17 @@ export default function LessonPage() {
     if (lockedMessage) {
       return (
         <LessonShell
-          badge="Lesson locked"
-          title="Урок пока закрыт"
-          subtitle="Сначала нужно завершить предыдущий раздел, чтобы открыть этот урок."
+          badge={t('lesson.badgeLocked')}
+          title={t('lesson.titleLocked')}
+          subtitle={t('lesson.subLocked')}
         >
           <div className="lesson-container lesson-state-layout">
             <div className="lesson-complete lesson-complete-card">
               <div className="complete-icon">🔒</div>
-              <h2>Доступ ограничен</h2>
+              <h2>{t('lesson.accessTitle')}</h2>
               <p className="lesson-state-copy">{lockedMessage}</p>
               <button className="lesson-btn continue" onClick={() => navigate(-1)}>
-                Вернуться назад
+                {t('lesson.backShort')}
               </button>
             </div>
           </div>
@@ -450,31 +441,31 @@ export default function LessonPage() {
   if (completed) {
     return (
       <LessonShell
-        badge="Lesson complete"
-        title="Отличная работа"
-        subtitle="Ты завершил урок и можешь вернуться на дорожку, чтобы открыть следующий шаг."
+        badge={t('lesson.badgeComplete')}
+        title={t('lesson.titleComplete')}
+        subtitle={t('lesson.subComplete')}
       >
         <div className="lesson-container lesson-state-layout">
           <div className="lesson-complete lesson-complete-card">
             <div className="complete-icon">&#127881;</div>
-            <h2>Урок завершён!</h2>
+            <h2>{t('lesson.doneTitle')}</h2>
             <p className="complete-title">{lesson.title}</p>
             <div className="complete-stats">
               <div className="complete-stat">
                 <span className="stat-value">{xpEarned}</span>
-                <span className="stat-label">XP получено</span>
+                <span className="stat-label">{t('lesson.xpGot')}</span>
               </div>
               <div className="complete-stat">
                 <span className="stat-value">{completionAccuracy}%</span>
-                <span className="stat-label">Точность</span>
+                <span className="stat-label">{t('lesson.accuracy')}</span>
               </div>
               <div className="complete-stat">
                 <span className="stat-value">{mistakes}</span>
-                <span className="stat-label">Ошибки</span>
+                <span className="stat-label">{t('lesson.mistakes')}</span>
               </div>
             </div>
             <button className="lesson-btn continue" onClick={() => navigate(-1)}>
-              Вернуться к модулю
+              {t('lesson.backModule')}
             </button>
           </div>
         </div>
@@ -495,9 +486,9 @@ export default function LessonPage() {
 
     return (
       <LessonShell
-        badge="Theory lesson"
+        badge={t('lesson.badgeTheory')}
         title={lesson.title}
-        subtitle="Изучите теоретический материал и завершите урок, чтобы получить XP."
+        subtitle={t('lesson.subTheory')}
       >
         <TheoryLesson lesson={lesson} onComplete={handleTheoryComplete} />
       </LessonShell>
@@ -507,18 +498,18 @@ export default function LessonPage() {
   if (!lesson.exercises || lesson.exercises.length === 0) {
     return (
       <LessonShell
-        badge="Lesson draft"
-        title="Урок в разработке"
-        subtitle="Контент ещё не опубликован. Можно вернуться назад и выбрать другой урок."
+        badge={t('lesson.badgeDraft')}
+        title={t('lesson.titleDraft')}
+        subtitle={t('lesson.subDraft')}
       >
         <div className="lesson-container lesson-state-layout">
           <div className="lesson-complete lesson-complete-card">
             <div className="complete-icon">&#128679;</div>
-            <h2>Урок в разработке</h2>
+            <h2>{t('lesson.titleDraft')}</h2>
             <p className="complete-title">{lesson.title}</p>
-            <p className="lesson-state-copy">Упражнения для этого урока скоро появятся.</p>
+            <p className="lesson-state-copy">{t('lesson.draftBody')}</p>
             <button className="lesson-btn continue" onClick={() => navigate(-1)}>
-              Назад
+              {t('lesson.back')}
             </button>
           </div>
         </div>
@@ -530,7 +521,7 @@ export default function LessonPage() {
   const totalExercises = lesson.exercises.length;
   const solvedExercises = currentIndex + (feedback ? 1 : 0);
   const progress = (solvedExercises / totalExercises) * 100;
-  const exerciseTypeLabel = getExerciseTypeLabel(exercise.type);
+  const exerciseTypeLabel = getExerciseTypeLabel(exercise.type, t);
 
   const handleCheck = async () => {
     if (!selectedAnswer || !exercise) return;
@@ -584,9 +575,9 @@ export default function LessonPage() {
 
   return (
     <LessonShell
-      badge="Interactive lesson"
+      badge={t('lesson.badgeInteractive')}
       title={lesson.title}
-      subtitle="Решай задания по шагам и заверши практику, чтобы открыть следующий урок на дороге."
+      subtitle={t('lesson.subInteractive')}
     >
       <div className="lesson-container">
         <div className="lesson-header lesson-header-card">
@@ -597,7 +588,7 @@ export default function LessonPage() {
           </button>
 
           <div className="lesson-header-copy">
-            <span className="lesson-kicker">Lesson progression</span>
+            <span className="lesson-kicker">{t('lesson.kickerProgress')}</span>
             <h1 className="lesson-title">{lesson.title}</h1>
           </div>
 
@@ -611,15 +602,15 @@ export default function LessonPage() {
 
         <div className="lesson-metrics-row">
           <div className="lesson-metric-pill">
-            <span className="lesson-metric-label">Тип</span>
+            <span className="lesson-metric-label">{t('lesson.metricType')}</span>
             <span className="lesson-metric-value">{exerciseTypeLabel}</span>
           </div>
           <div className="lesson-metric-pill">
-            <span className="lesson-metric-label">Очки</span>
+            <span className="lesson-metric-label">{t('lesson.metricScore')}</span>
             <span className="lesson-metric-value">{score}</span>
           </div>
           <div className="lesson-metric-pill">
-            <span className="lesson-metric-label">Ошибки</span>
+            <span className="lesson-metric-label">{t('lesson.metricErrors')}</span>
             <span className="lesson-metric-value">{mistakes}</span>
           </div>
         </div>
@@ -631,7 +622,7 @@ export default function LessonPage() {
           {exercise.type === 'speaking' ? (
             <div className="lesson-speaking-wrap">
               <div className="lesson-speaking-note">
-                Произнесите слово или фразу как можно ближе к правильному варианту.
+                {t('lesson.speakHint')}
               </div>
               <SpeechInput
                 key={exercise.id}
@@ -691,9 +682,9 @@ export default function LessonPage() {
                 {feedback.correct ? '✓' : '✗'}
               </div>
               <div className="feedback-text">
-                <strong>{feedback.correct ? 'Правильно!' : 'Неправильно'}</strong>
+                <strong>{feedback.correct ? t('lesson.correct') : t('lesson.wrongTitle')}</strong>
                 {!feedback.correct && feedback.correct_answer && (
-                  <span> · Правильный ответ: <strong>{feedback.correct_answer}</strong></span>
+                  <span> · {t('lesson.correctAnswer')}: <strong>{feedback.correct_answer}</strong></span>
                 )}
                 {feedback.explanation && <p className="feedback-explanation">{feedback.explanation}</p>}
               </div>
@@ -705,11 +696,11 @@ export default function LessonPage() {
           <div className="lesson-footer-copy">
             {!feedback
               ? exercise.type === 'speaking'
-                ? 'После успешного распознавания появится кнопка перехода к следующему шагу.'
-                : 'Выберите вариант ответа и проверьте себя.'
+                ? t('lesson.footerSpeak')
+                : t('lesson.footerBefore')
               : currentIndex < totalExercises - 1
-                ? 'Ответ зафиксирован. Можно переходить к следующему упражнению.'
-                : 'Последний шаг. Завершите урок и получите награду.'}
+                ? t('lesson.footerAfter')
+                : t('lesson.footerLast')}
           </div>
 
           {!feedback && exercise.type !== 'speaking' ? (
@@ -718,11 +709,11 @@ export default function LessonPage() {
               onClick={handleCheck}
               disabled={!selectedAnswer}
             >
-              Проверить
+              {t('lesson.check')}
             </button>
           ) : feedback ? (
             <button className="lesson-btn continue" onClick={handleNext}>
-              {currentIndex < totalExercises - 1 ? 'Далее' : 'Завершить урок'}
+              {currentIndex < totalExercises - 1 ? t('lesson.next') : t('lesson.finishLesson')}
             </button>
           ) : null}
         </div>

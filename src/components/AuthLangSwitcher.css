@@ -1,0 +1,29 @@
+.auth-lang-switcher {
+  display: inline-flex;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.auth-lang-btn {
+  padding: 8px 14px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+
+.auth-lang-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.auth-lang-btn.active {
+  background: rgba(255, 255, 255, 0.95);
+  color: #166534;
+}

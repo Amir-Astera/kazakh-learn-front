@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useLang } from '../context/LanguageContext';
 import './SpeechInput.css';
 
 interface SpeechInputProps {
@@ -10,6 +11,7 @@ interface SpeechInputProps {
 const MAX_ATTEMPTS = 3;
 
 export default function SpeechInput({ targetWord, onResult, disabled = false }: SpeechInputProps) {
+  const { t } = useLang();
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [status, setStatus] = useState<'idle' | 'listening' | 'success' | 'fail' | 'no-support'>('idle');
@@ -92,7 +94,7 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
       } else if (event.error === 'not-allowed') {
         setTranscript('Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.');
       } else {
-        setTranscript('Не удалось распознать речь. Попробуйте снова.');
+        setTranscript(t('speech.recognizeFail'));
       }
       setStatus('fail');
     };
@@ -102,14 +104,14 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
     };
 
     recognition.start();
-  }, [disabled, targetWord, onResult, status]);
+  }, [disabled, targetWord, onResult, status, t]);
 
   const canRetry = status === 'fail' && attempts < MAX_ATTEMPTS && !disabled;
 
   return (
     <div className="speech-input">
       <div className="speech-target">
-        <span className="speech-label">Произнесите:</span>
+        <span className="speech-label">{t('speech.say')}</span>
         <span className="speech-word">{targetWord}</span>
         {targetWord && (
           <span className="speech-phonetic">{toSimpleTranslit(targetWord)}</span>
@@ -119,8 +121,8 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
       {status === 'no-support' ? (
         <div className="speech-no-support">
           <span>🎤</span>
-          <p>Распознавание речи не поддерживается в этом браузере.</p>
-          <p className="speech-no-support-hint">Используйте Chrome или Edge для этого задания.</p>
+          <p>{t('speech.noSupport')}</p>
+          <p className="speech-no-support-hint">{t('speech.noSupportHint')}</p>
         </div>
       ) : (
         <button
@@ -143,14 +145,14 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
           </div>
           <span className="speech-btn-label">
             {disabled || status === 'success'
-              ? 'Ответ зафиксирован'
+              ? t('speech.answerLocked')
               : listening
-              ? 'Слушаю...'
+              ? t('speech.listening')
               : status === 'idle'
-              ? 'Нажмите и говорите'
+              ? t('speech.tap')
               : canRetry
-              ? `Попробовать снова (${MAX_ATTEMPTS - attempts} осталось)`
-              : 'Нажмите и говорите'}
+              ? t('speech.retryLeft').replace('{n}', String(MAX_ATTEMPTS - attempts))
+              : t('speech.tap')}
           </span>
         </button>
       )}
@@ -163,17 +165,17 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
           <div className="speech-result-body">
             {status === 'success' ? (
               <span className="speech-result-text">
-                Отлично! Вы сказали: <strong>"{transcript}"</strong>
+                {t('speech.great')} <strong>&quot;{transcript}&quot;</strong>
               </span>
             ) : (
               <>
                 <span className="speech-result-text">
-                  Вы сказали: <strong>"{transcript}"</strong>
-                  {similarity > 0 && <span className="speech-similarity"> · {similarity}% совпадение</span>}
+                  {t('speech.said')} <strong>&quot;{transcript}&quot;</strong>
+                  {similarity > 0 && <span className="speech-similarity"> · {similarity}% {t('speech.similarity')}</span>}
                 </span>
                 {!canRetry && attempts >= MAX_ATTEMPTS && (
                   <span className="speech-correct-hint">
-                    Правильно: <strong>{targetWord}</strong>
+                    {t('speech.correctIs')}: <strong>{targetWord}</strong>
                   </span>
                 )}
               </>

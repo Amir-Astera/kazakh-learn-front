@@ -1,12 +1,13 @@
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { resolveMediaUrl, AVATAR_IMG_REFERRER_POLICY } from '../config/apiBase';
 import mascotImg from '../assets/ChatGPT Image 6 мар. 2026 г., 23_45_55.png';
 import './Navbar.css';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const { lang, toggle } = useLang();
+  const { lang, toggle, t } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -22,19 +23,19 @@ export default function Navbar() {
       </a>
 
       <div className="nav-links">
-        <a className={`nav-link ${isActive('/') || location.pathname.startsWith('/module') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Home</a>
-        <a className="nav-link" href="#" onClick={(e) => e.preventDefault()}>AI help</a>
-        <a className={`nav-link ${isActive('/rating') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/rating'); }}>Rating</a>
-        <a className={`nav-link ${isActive('/profile') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/profile'); }}>Profile</a>
+        <a className={`nav-link ${isActive('/') || location.pathname.startsWith('/module') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>{t('nav.home')}</a>
+        <a className={`nav-link ${isActive('/chat') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/chat'); }}>{t('nav.ai')}</a>
+        <a className={`nav-link ${isActive('/rating') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/rating'); }}>{t('nav.rating')}</a>
+        <a className={`nav-link ${isActive('/profile') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/profile'); }}>{t('nav.profile')}</a>
         {user?.is_admin && (
           <a className={`nav-link admin-link ${location.pathname.startsWith('/admin') ? 'active' : ''}`} href="#" onClick={(e) => { e.preventDefault(); navigate('/admin'); }}>
-            Admin Panel
+            {t('nav.admin')}
           </a>
         )}
       </div>
 
       <div className="nav-right">
-        <button className="lang-toggle" onClick={toggle} title="Switch language">
+        <button className="lang-toggle" type="button" onClick={toggle} title={t('nav.langToggle')}>
           {lang === 'ru' ? 'EN' : 'RU'}
         </button>
 
@@ -48,18 +49,22 @@ export default function Navbar() {
           <span className="badge-val">{user?.xp || 0}</span>
         </div>
 
-        <button className="nav-profile-btn" type="button" onClick={() => navigate('/profile')} title="Profile settings">
-          {user?.name || 'Profile'}
+        <button className="nav-profile-btn" type="button" onClick={() => navigate('/profile')} title={t('nav.profileSettings')}>
+          {user?.name || t('nav.profile')}
         </button>
 
-        <div className="nav-avatar" onClick={() => navigate('/profile')} title="Open profile">
-          <div className="nav-avatar-placeholder">
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-          </div>
+        <div className="nav-avatar" onClick={() => navigate('/profile')} title={t('nav.profileOpen')} role="presentation">
+          {user?.avatar_url ? (
+            <img className="nav-avatar-img" src={resolveMediaUrl(user.avatar_url) || ''} alt="" referrerPolicy={AVATAR_IMG_REFERRER_POLICY} />
+          ) : (
+            <div className="nav-avatar-placeholder">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+          )}
         </div>
 
         <button className="nav-logout-btn" type="button" onClick={logout}>
-          Logout
+          {t('nav.logout')}
         </button>
       </div>
     </nav>

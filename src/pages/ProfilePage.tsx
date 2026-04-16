@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getStats, updateProfile } from '../api';
+import { getStats, updateProfile, uploadAvatar } from '../api';
 import { useLang } from '../context/LanguageContext';
+import { resolveMediaUrl, AVATAR_IMG_REFERRER_POLICY } from '../config/apiBase';
 import './ProfilePage.css';
 
 interface Stats {
@@ -13,16 +14,17 @@ interface Stats {
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
-  const { setLangChoice } = useLang();
+  const { t, lang, setLangChoice } = useLang();
   const [stats, setStats] = useState<Stats | null>(null);
   const [name, setName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
   const [languagePair, setLanguagePair] = useState<'ru-kz' | 'en-kz'>('ru-kz');
   const [learningGoal, setLearningGoal] = useState<'general' | 'travel' | 'study' | 'work'>('general');
-  const [proficiencyLevel, setProficiencyLevel] = useState<'beginner' | 'elementary' | 'intermediate'>('beginner');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [error, setError] = useState('');
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarMsg, setAvatarMsg] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     getStats()
@@ -33,25 +35,40 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     setName(user.name || '');
-    setAvatarUrl(user.avatar_url || '');
     setLanguagePair(user.language_pair || 'ru-kz');
     setLearningGoal(user.learning_goal || 'general');
-    setProficiencyLevel(user.proficiency_level || 'beginner');
   }, [user]);
 
   const profileInitial = useMemo(() => ({
     name: user?.name || '',
-    avatar_url: user?.avatar_url || '',
     language_pair: user?.language_pair || 'ru-kz',
     learning_goal: user?.learning_goal || 'general',
-    proficiency_level: user?.proficiency_level || 'beginner',
   }), [user]);
 
   const hasChanges = name !== profileInitial.name
-    || avatarUrl !== profileInitial.avatar_url
     || languagePair !== profileInitial.language_pair
-    || learningGoal !== profileInitial.learning_goal
-    || proficiencyLevel !== profileInitial.proficiency_level;
+    || learningGoal !== profileInitial.learning_goal;
+
+  const avatarSrc = resolveMediaUrl(user?.avatar_url || null);
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarMsg('');
+    setError('');
+    setAvatarBusy(true);
+    try {
+      await uploadAvatar(file);
+      await refreshUser();
+      setAvatarMsg(t('profile.avatarDone'));
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg || t('profile.avatarErr'));
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,16 +79,15 @@ export default function ProfilePage() {
     try {
       await updateProfile({
         name,
-        avatar_url: avatarUrl.trim() || null,
         language_pair: languagePair,
         learning_goal: learningGoal,
-        proficiency_level: proficiencyLevel,
       });
       await refreshUser();
       setLangChoice(languagePair === 'en-kz' ? 'en' : 'ru');
-      setSaveMessage('Профиль успешно обновлён');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Не удалось обновить профиль');
+      setSaveMessage(t('profile.saved'));
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg || t('profile.saveErr'));
     } finally {
       setSaving(false);
     }
@@ -82,8 +98,8 @@ export default function ProfilePage() {
       <div className="profile-container">
         <div className="profile-card">
           <div className="profile-avatar">
-            {avatarUrl ? (
-              <img className="profile-avatar-image" src={avatarUrl} alt={user?.name || 'Avatar'} />
+            {avatarSrc ? (
+              <img className="profile-avatar-image" src={avatarSrc} alt={user?.name || 'Avatar'} referrerPolicy={AVATAR_IMG_REFERRER_POLICY} />
             ) : (
               <div className="profile-avatar-inner">
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}
@@ -92,8 +108,8 @@ export default function ProfilePage() {
           </div>
           <h1 className="profile-name">{user?.name}</h1>
           <p className="profile-email">{user?.email}</p>
-          <p className="profile-meta">Языковая пара: {user?.language_pair === 'en-kz' ? 'English → Қазақша' : 'Русский → Қазақша'}</p>
-          <p className="profile-meta">Дата регистрации: {user?.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : '—'}</p>
+          <p className="profile-meta">{t('profile.pair')}: {user?.language_pair === 'en-kz' ? t('reg.pair.en') : t('reg.pair.ru')}</p>
+          <p className="profile-meta">{t('profile.registered')}: {user?.created_at ? new Date(user.created_at).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-GB') : t('profile.dateDash')}</p>
 
           <div className="profile-badges">
             <div className="profile-badge xp">
@@ -111,7 +127,7 @@ export default function ProfilePage() {
               </svg>
               <div>
                 <span className="badge-num">{user?.streak || 0}</span>
-                <span className="badge-text">Day Streak</span>
+                <span className="badge-text">{t('profile.streak')}</span>
               </div>
             </div>
           </div>
@@ -120,56 +136,53 @@ export default function ProfilePage() {
         <form className="profile-form-card" onSubmit={handleSave}>
           <div className="profile-form-header">
             <div>
-              <h2>Редактирование профиля</h2>
-              <p>Измени свои настройки обучения и персональные данные.</p>
+              <h2>{t('profile.editTitle')}</h2>
+              <p>{t('profile.editSub')}</p>
             </div>
           </div>
 
           {error && <div className="profile-alert error">{error}</div>}
           {saveMessage && <div className="profile-alert success">{saveMessage}</div>}
+          {avatarMsg && <div className="profile-alert success">{avatarMsg}</div>}
 
           <div className="profile-form-grid">
             <label className="profile-field">
-              <span>Имя</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Введите имя" />
+              <span>{t('profile.name')}</span>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('profile.namePh')} />
+            </label>
+
+            <label className="profile-field profile-field-full profile-field-avatar">
+              <span>{t('profile.avatarUpload')}</span>
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="profile-file-input" onChange={handleAvatarFile} disabled={avatarBusy} />
+              <div className="profile-avatar-actions">
+                <button type="button" className="profile-save-btn profile-avatar-btn" disabled={avatarBusy} onClick={() => fileInputRef.current?.click()}>
+                  {avatarBusy ? t('profile.avatarUploading') : t('profile.avatarPick')}
+                </button>
+              </div>
             </label>
 
             <label className="profile-field">
-              <span>Ссылка на аватар</span>
-              <input value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." />
-            </label>
-
-            <label className="profile-field">
-              <span>Языковая пара</span>
+              <span>{t('profile.pair')}</span>
               <select value={languagePair} onChange={(e) => setLanguagePair(e.target.value as 'ru-kz' | 'en-kz')}>
-                <option value="ru-kz">Русский → Қазақша</option>
-                <option value="en-kz">English → Қазақша</option>
+                <option value="ru-kz">{t('reg.pair.ru')}</option>
+                <option value="en-kz">{t('reg.pair.en')}</option>
               </select>
             </label>
 
             <label className="profile-field">
-              <span>Цель обучения</span>
+              <span>{t('reg.goal')}</span>
               <select value={learningGoal} onChange={(e) => setLearningGoal(e.target.value as 'general' | 'travel' | 'study' | 'work')}>
-                <option value="general">Общее изучение</option>
-                <option value="travel">Путешествия</option>
-                <option value="study">Учёба</option>
-                <option value="work">Работа</option>
-              </select>
-            </label>
-
-            <label className="profile-field profile-field-full">
-              <span>Текущий уровень</span>
-              <select value={proficiencyLevel} onChange={(e) => setProficiencyLevel(e.target.value as 'beginner' | 'elementary' | 'intermediate')}>
-                <option value="beginner">Beginner / Начинающий</option>
-                <option value="elementary">Elementary / Базовый</option>
-                <option value="intermediate">Intermediate / Средний</option>
+                <option value="general">{t('reg.goal.general')}</option>
+                <option value="travel">{t('reg.goal.travel')}</option>
+                <option value="study">{t('reg.goal.study')}</option>
+                <option value="work">{t('reg.goal.work')}</option>
               </select>
             </label>
           </div>
 
           <div className="profile-form-actions">
             <button type="submit" className="profile-save-btn" disabled={saving || !hasChanges}>
-              {saving ? 'Сохраняем...' : 'Сохранить изменения'}
+              {saving ? t('profile.saving') : t('profile.save')}
             </button>
           </div>
         </form>
@@ -178,19 +191,19 @@ export default function ProfilePage() {
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-card-value">{stats.total_lessons}</div>
-              <div className="stat-card-label">Уроков пройдено</div>
+              <div className="stat-card-label">{t('profile.stat.lessons')}</div>
             </div>
             <div className="stat-card">
               <div className="stat-card-value">{stats.total_xp}</div>
-              <div className="stat-card-label">Всего XP</div>
+              <div className="stat-card-label">{t('profile.stat.xp')}</div>
             </div>
             <div className="stat-card">
               <div className="stat-card-value">{stats.avg_score}%</div>
-              <div className="stat-card-label">Средний балл</div>
+              <div className="stat-card-label">{t('profile.stat.score')}</div>
             </div>
             <div className="stat-card">
               <div className="stat-card-value">{stats.completed_units}</div>
-              <div className="stat-card-label">Юнитов завершено</div>
+              <div className="stat-card-label">{t('profile.stat.units')}</div>
             </div>
           </div>
         )}

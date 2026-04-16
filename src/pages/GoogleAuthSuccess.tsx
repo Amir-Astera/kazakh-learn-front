@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getMe } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LanguageContext';
 
 export default function GoogleAuthSuccess() {
+  const { t } = useLang();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setAuth } = useAuth();
@@ -36,7 +38,7 @@ export default function GoogleAuthSuccess() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: 16 }}>
       <div style={{ width: 40, height: 40, border: '4px solid #22c55e', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-      <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Выполняем вход через Google...</p>
+      <p style={{ color: '#64748b', fontSize: '0.95rem' }}>{t('google.signingIn')}</p>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );

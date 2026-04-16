@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { sendChatMessage, type ChatMessage } from '../api';
+import { useLang } from '../context/LanguageContext';
 import './ChatPage.css';
 
 /** Простой inline-Markdown: **жирный**, `код` (без HTML из ответа модели). */
@@ -59,18 +60,18 @@ function renderAssistantMarkdown(content: string): ReactNode {
       continue;
     }
 
-    const t = line.trimStart();
-    if (t.startsWith('### ')) {
+    const lineT = line.trimStart();
+    if (lineT.startsWith('### ')) {
       blocks.push(
-        <h3 key={`h3-${k++}`} className="chat-md-h3">{renderInlineMarkdown(t.slice(4), `h3-${k}`)}</h3>
+        <h3 key={`h3-${k++}`} className="chat-md-h3">{renderInlineMarkdown(lineT.slice(4), `h3-${k}`)}</h3>
       );
-    } else if (t.startsWith('## ')) {
+    } else if (lineT.startsWith('## ')) {
       blocks.push(
-        <h2 key={`h2-${k++}`} className="chat-md-h2">{renderInlineMarkdown(t.slice(3), `h2-${k}`)}</h2>
+        <h2 key={`h2-${k++}`} className="chat-md-h2">{renderInlineMarkdown(lineT.slice(3), `h2-${k}`)}</h2>
       );
-    } else if (t.startsWith('# ')) {
+    } else if (lineT.startsWith('# ')) {
       blocks.push(
-        <h2 key={`h1-${k++}`} className="chat-md-h1">{renderInlineMarkdown(t.slice(2), `h1-${k}`)}</h2>
+        <h2 key={`h1-${k++}`} className="chat-md-h1">{renderInlineMarkdown(lineT.slice(2), `h1-${k}`)}</h2>
       );
     } else {
       blocks.push(
@@ -84,16 +85,25 @@ function renderAssistantMarkdown(content: string): ReactNode {
 }
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'assistant',
-      content: 'Сәлем! Мен сіздің қазақ тілі бойынша көмекшіңізбін.\n\nПривет! Я твой помощник по казахскому языку. Задавай любые вопросы об алфавите, грамматике, переводах и произношении.',
-    },
-  ]);
+  const { t, lang } = useLang();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const welcome = t('chat.welcome');
+    setMessages((prev) => {
+      if (prev.length === 0) {
+        return [{ role: 'assistant', content: welcome }];
+      }
+      if (prev.length === 1 && prev[0].role === 'assistant' && prev[0].content !== welcome) {
+        return [{ role: 'assistant', content: welcome }];
+      }
+      return prev;
+    });
+  }, [lang, t]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -113,8 +123,8 @@ export default function ChatPage() {
       const res = await sendChatMessage(nextMessages);
       const reply: ChatMessage = { role: 'assistant', content: res.data.reply };
       setMessages(prev => [...prev, reply]);
-    } catch (err: any) {
-      const errorText = err?.response?.data?.error || 'Произошла ошибка. Попробуйте ещё раз.';
+    } catch (err: unknown) {
+      const errorText = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || t('chat.error');
       setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${errorText}` }]);
     } finally {
       setLoading(false);
@@ -131,28 +141,24 @@ export default function ChatPage() {
   const clear = () => {
     setMessages([{
       role: 'assistant',
-      content: 'Сәлем! Мен сіздің қазақ тілі бойынша көмекшіңізбін.\n\nПривет! Я твой помощник по казахскому языку. Задавай любые вопросы об алфавите, грамматике, переводах и произношении.',
+      content: t('chat.welcome'),
     }]);
   };
+
+  const tips = [t('chat.tip1'), t('chat.tip2'), t('chat.tip3'), t('chat.tip4'), t('chat.tip5')];
 
   return (
     <div className="chat-page">
       <div className="chat-sidebar-col">
         <div className="chat-sidebar-inner">
           <div className="chat-sidebar-icon">🤖</div>
-          <h2 className="chat-sidebar-title">AI-ассистент</h2>
+          <h2 className="chat-sidebar-title">{t('chat.sidebarTitle')}</h2>
           <p className="chat-sidebar-desc">
-            Задавай вопросы по казахскому языку — грамматике, переводам, алфавиту и произношению.
+            {t('chat.sidebarDesc')}
           </p>
           <div className="chat-tips">
-            <div className="chat-tip-label">Примеры вопросов:</div>
-            {[
-              'Как сказать "Где находится…" на казахском?',
-              'Объясни падежи казахского языка',
-              'Переведи слово "кітап"',
-              'Какой алфавит используется в Казахстане?',
-              'Как произносится буква Ң?',
-            ].map((tip, i) => (
+            <div className="chat-tip-label">{t('chat.tipsLabel')}</div>
+            {tips.map((tip, i) => (
               <button
                 key={i}
                 className="chat-tip-btn"
@@ -163,7 +169,7 @@ export default function ChatPage() {
             ))}
           </div>
           <button className="chat-clear-btn" onClick={clear}>
-            Очистить чат
+            {t('chat.clear')}
           </button>
         </div>
       </div>
@@ -173,8 +179,8 @@ export default function ChatPage() {
           <div className="chat-header-info">
             <div className="chat-header-avatar">🇰🇿</div>
             <div>
-              <div className="chat-header-name">Казахский ассистент</div>
-              <div className="chat-header-status">Powered by Gemini AI</div>
+              <div className="chat-header-name">{t('chat.headerName')}</div>
+              <div className="chat-header-status">{t('chat.headerPowered')}</div>
             </div>
           </div>
         </div>
@@ -215,7 +221,7 @@ export default function ChatPage() {
             ref={inputRef}
             className="chat-input"
             rows={1}
-            placeholder="Напишите вопрос по казахскому языку..."
+            placeholder={t('chat.placeholder')}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKeyDown}

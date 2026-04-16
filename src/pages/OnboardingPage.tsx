@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { completeOnboarding } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
+import AuthLangSwitcher from '../components/AuthLangSwitcher';
 import './AuthPage.css';
 import mascotImg from '../assets/ChatGPT Image 6 мар. 2026 г., 23_45_55.png';
 import violinImg from '../assets/deco-violin.png';
@@ -12,14 +13,8 @@ import dombraImg from '../assets/deco-dombra.png';
 
 const WEEKLY_OPTIONS = [5, 10, 15, 20] as const;
 
-const STEP_SUBTITLE: Record<number, string> = {
-  1: 'Шаг 1 из 4: возраст.',
-  2: 'Шаг 2 из 4: уровень казахского.',
-  3: 'Шаг 3 из 4: время в неделю.',
-  4: 'Шаг 4 из 4: язык и цель.',
-};
-
 export default function OnboardingPage() {
+  const { t, setLangChoice } = useLang();
   const [step, setStep] = useState(1);
   const [age, setAge] = useState('');
   const [weeklyStudyMinutes, setWeeklyStudyMinutes] = useState<number>(10);
@@ -29,8 +24,12 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { refreshUser } = useAuth();
-  const { setLangChoice } = useLang();
   const navigate = useNavigate();
+
+  const stepSubtitle = useMemo(() => {
+    const keys = ['onb.step1sub', 'onb.step2sub', 'onb.step3sub', 'onb.step4sub'] as const;
+    return t(keys[step - 1] || keys[0]);
+  }, [step, t]);
 
   const goBack = () => {
     setError('');
@@ -44,7 +43,7 @@ export default function OnboardingPage() {
     if (step === 1) {
       const ageNum = parseInt(age, 10);
       if (!Number.isFinite(ageNum) || ageNum < 7 || ageNum > 100) {
-        setError('Укажите возраст от 7 до 100 лет.');
+        setError(t('reg.errAge'));
         return;
       }
       setStep(2);
@@ -58,7 +57,7 @@ export default function OnboardingPage() {
 
     if (step === 3) {
       if (!WEEKLY_OPTIONS.includes(weeklyStudyMinutes as (typeof WEEKLY_OPTIONS)[number])) {
-        setError('Выберите 5, 10, 15 или 20 минут в неделю.');
+        setError(t('reg.errWeekly'));
         return;
       }
       setStep(4);
@@ -80,17 +79,17 @@ export default function OnboardingPage() {
       navigate('/', { replace: true });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(msg || 'Не удалось сохранить');
+      setError(msg || t('onb.errSave'));
     } finally {
       setLoading(false);
     }
   };
 
   const stepTitle =
-    step === 1 ? 'Ваш возраст'
-    : step === 2 ? 'Насколько хорошо вы знаете казахский?'
-    : step === 3 ? 'Сколько минут в неделю готовы уделять?'
-    : 'Язык и цель';
+    step === 1 ? t('onb.title1')
+    : step === 2 ? t('onb.title2')
+    : step === 3 ? t('onb.title3')
+    : t('onb.title4');
 
   return (
     <div className="auth-page">
@@ -111,15 +110,18 @@ export default function OnboardingPage() {
       </div>
 
       <div className="auth-form-wrapper">
+        <div className="auth-form-toolbar">
+          <AuthLangSwitcher />
+        </div>
         <h1 className="auth-form-title">{stepTitle}</h1>
-        <p className="auth-form-subtitle">{STEP_SUBTITLE[step]}</p>
+        <p className="auth-form-subtitle">{stepSubtitle}</p>
 
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
           {step === 1 && (
             <div className="auth-form-group">
-              <label className="auth-form-label">Сколько вам полных лет?</label>
+              <label className="auth-form-label">{t('reg.ageQ')}</label>
               <input
                 className="auth-form-input"
                 type="number"
@@ -127,7 +129,7 @@ export default function OnboardingPage() {
                 max={100}
                 value={age}
                 onChange={e => setAge(e.target.value)}
-                placeholder="Например, 24"
+                placeholder={t('reg.agePh')}
                 required
                 autoFocus
               />
@@ -141,18 +143,18 @@ export default function OnboardingPage() {
                 value={proficiencyLevel}
                 onChange={e => setProficiencyLevel(e.target.value as typeof proficiencyLevel)}
                 autoFocus
-                aria-label="Уровень казахского"
+                aria-label={t('reg.profAria')}
               >
-                <option value="beginner">Почти не знаю / только начинаю</option>
-                <option value="elementary">Базовый уровень</option>
-                <option value="intermediate">Уверенно общаюсь</option>
+                <option value="beginner">{t('reg.prof.beginner')}</option>
+                <option value="elementary">{t('reg.prof.elementary')}</option>
+                <option value="intermediate">{t('reg.prof.intermediate')}</option>
               </select>
             </div>
           )}
 
           {step === 3 && (
             <div className="auth-form-group">
-              <div className="auth-segmented-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }} role="group" aria-label="Минут в неделю">
+              <div className="auth-segmented-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }} role="group" aria-label={t('onb.title3')}>
                 {WEEKLY_OPTIONS.map(m => (
                   <button
                     key={m}
@@ -160,7 +162,7 @@ export default function OnboardingPage() {
                     className={`auth-segmented-btn ${weeklyStudyMinutes === m ? 'active' : ''}`}
                     onClick={() => setWeeklyStudyMinutes(m)}
                   >
-                    {m} мин
+                    {m} {t('reg.min')}
                   </button>
                 ))}
               </div>
@@ -170,27 +172,27 @@ export default function OnboardingPage() {
           {step === 4 && (
             <>
               <div className="auth-form-group">
-                <label className="auth-form-label">Языковая пара</label>
+                <label className="auth-form-label">{t('reg.langPair')}</label>
                 <div className="auth-segmented-grid">
                   <button type="button" className={`auth-segmented-btn ${languagePair === 'ru-kz' ? 'active' : ''}`} onClick={() => setLanguagePair('ru-kz')}>
-                    Русский → Қазақша
+                    {t('reg.pair.ru')}
                   </button>
                   <button type="button" className={`auth-segmented-btn ${languagePair === 'en-kz' ? 'active' : ''}`} onClick={() => setLanguagePair('en-kz')}>
-                    English → Қазақша
+                    {t('reg.pair.en')}
                   </button>
                 </div>
               </div>
               <div className="auth-form-group">
-                <label className="auth-form-label">Цель обучения</label>
+                <label className="auth-form-label">{t('reg.goal')}</label>
                 <select
                   className="auth-form-input auth-form-select"
                   value={learningGoal}
                   onChange={e => setLearningGoal(e.target.value as typeof learningGoal)}
                 >
-                  <option value="general">Общее изучение</option>
-                  <option value="travel">Путешествия</option>
-                  <option value="study">Учёба</option>
-                  <option value="work">Работа</option>
+                  <option value="general">{t('reg.goal.general')}</option>
+                  <option value="travel">{t('reg.goal.travel')}</option>
+                  <option value="study">{t('reg.goal.study')}</option>
+                  <option value="work">{t('reg.goal.work')}</option>
                 </select>
               </div>
             </>
@@ -199,11 +201,11 @@ export default function OnboardingPage() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {step > 1 && (
               <button type="button" className="auth-btn-submit" style={{ flex: 1, background: '#64748b' }} onClick={goBack}>
-                Назад
+                {t('reg.back')}
               </button>
             )}
             <button type="submit" className="auth-btn-submit" style={{ flex: 2 }} disabled={loading}>
-              {loading ? 'Сохраняем…' : step === 4 ? 'Продолжить к урокам' : 'Далее'}
+              {loading ? t('onb.saving') : step === 4 ? t('onb.continue') : t('reg.next')}
             </button>
           </div>
         </form>

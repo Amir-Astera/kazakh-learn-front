@@ -9,6 +9,8 @@ import LessonPage from './pages/LessonPage'
 import ProfilePage from './pages/ProfilePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import RatingPage from './pages/RatingPage'
 import ChatPage from './pages/ChatPage'
 import GoogleAuthSuccess from './pages/GoogleAuthSuccess'
@@ -23,8 +25,9 @@ import AdminExercises from './pages/admin/AdminExercises'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, loading, user } = useAuth()
+  const { t } = useLang()
   const location = useLocation()
-  if (loading) return <div style={{ color: 'white', textAlign: 'center', padding: '100px' }}>Loading...</div>
+  if (loading) return <div style={{ color: 'white', textAlign: 'center', padding: '100px' }}>{t('app.loading')}</div>
   if (!token) return <Navigate to="/login" />
   if (user && user.onboarding_completed === false && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />
@@ -34,14 +37,16 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { token, user, loading } = useAuth()
-  if (loading) return <div style={{ color: 'white', textAlign: 'center', padding: '100px' }}>Loading...</div>
+  const { t } = useLang()
+  if (loading) return <div style={{ color: 'white', textAlign: 'center', padding: '100px' }}>{t('app.loading')}</div>
   if (!token) return <Navigate to="/login" />
   return user?.is_admin ? <>{children}</> : <Navigate to="/" />
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth()
-  if (loading) return <div style={{ color: 'white', textAlign: 'center', padding: '100px' }}>Loading...</div>
+  const { t } = useLang()
+  if (loading) return <div style={{ color: 'white', textAlign: 'center', padding: '100px' }}>{t('app.loading')}</div>
   return !token ? <>{children}</> : <Navigate to="/" />
 }
 
@@ -63,6 +68,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+        <Route path="/reset-password" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
         <Route path="/" element={<PrivateRoute><ModulePage /></PrivateRoute>} />
         <Route path="/module/:moduleId" element={<PrivateRoute><ModulePage /></PrivateRoute>} />
         <Route path="/unit/:unitId" element={<PrivateRoute><UnitPage /></PrivateRoute>} />

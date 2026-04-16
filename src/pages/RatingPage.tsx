@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLang } from '../context/LanguageContext';
 import './RatingPage.css';
 import api from '../api';
 
@@ -11,6 +12,7 @@ interface RatingUser {
 }
 
 export default function RatingPage() {
+  const { t } = useLang();
   const { user } = useAuth();
   const [users, setUsers] = useState<RatingUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,23 +28,23 @@ export default function RatingPage() {
     <div className="rating-page">
       <div className="rating-container">
         <div className="rating-header">
-          <h1 className="rating-title">Rating</h1>
-          <p className="rating-sub">Рейтинг всех учащихся по опыту</p>
+          <h1 className="rating-title">{t('rating.title')}</h1>
+          <p className="rating-sub">{t('rating.sub')}</p>
         </div>
 
         <div className="rating-card">
           {loading ? (
-            <div className="rating-loading">Загрузка...</div>
+            <div className="rating-loading">{t('rating.loading')}</div>
           ) : users.length === 0 ? (
-            <div className="rating-empty">Пока нет данных</div>
+            <div className="rating-empty">{t('rating.empty')}</div>
           ) : (
             <table className="rating-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Пользователь</th>
-                  <th>XP</th>
-                  <th>Streak</th>
+                  <th>{t('rating.thRank')}</th>
+                  <th>{t('rating.thUser')}</th>
+                  <th>{t('rating.thXp')}</th>
+                  <th>{t('rating.thStreak')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -59,7 +61,7 @@ export default function RatingPage() {
                         {u.name.charAt(0).toUpperCase()}
                       </div>
                       <span className="rating-name">{u.name}</span>
-                      {u.id === user?.id && <span className="you-badge">Вы</span>}
+                      {u.id === user?.id && <span className="you-badge">{t('rating.you')}</span>}
                     </td>
                     <td className="rating-xp">{u.xp} XP</td>
                     <td className="rating-streak">

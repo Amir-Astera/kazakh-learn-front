@@ -38,6 +38,45 @@
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
 }
 
+.module-next-level-banner {
+  max-width: 900px;
+  margin: 0 auto 18px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #6ee7b7;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.module-next-level-banner p {
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #065f46;
+}
+
+.module-next-level-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(5, 150, 105, 0.25);
+}
+
+.module-next-level-btn:hover {
+  filter: brightness(1.05);
+}
+
 /* ─── Unit Block (accordion) ─── */
 .unit-block {
   background: rgba(255,255,255,0.5);
