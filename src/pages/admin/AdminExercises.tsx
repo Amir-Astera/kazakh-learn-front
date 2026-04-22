@@ -5,14 +5,15 @@ import { adminGetExercises, adminCreateExercise, adminUpdateExercise, adminDelet
 interface Lesson { id: number; title: string; unit_title: string; }
 interface Exercise {
   id: number; lesson_id: number; lesson_title: string;
-  type: string; question: string; options: string[] | null;
-  correct_answer: string; explanation: string; order_num: number;
+  type: string; question: string; question_en: string | null;
+  options: string[] | null;
+  correct_answer: string; explanation: string; explanation_en: string | null; order_num: number;
 }
 
 const TYPES = ['translation','choice','grammar','sentence','listening','speaking'];
 const TYPE_LABELS: Record<string,string> = { translation:'Перевод', choice:'Выбор', grammar:'Грамматика', sentence:'Предложение', listening:'Аудирование', speaking:'Произношение' };
 
-const empty = { lesson_id: 1, type: 'choice', question: '', options: '["Вариант 1","Вариант 2","Вариант 3","Вариант 4"]', correct_answer: '', explanation: '', order_num: 1 };
+const empty = { lesson_id: 1, type: 'choice', question: '', question_en: '', options: '["Вариант 1","Вариант 2","Вариант 3","Вариант 4"]', correct_answer: '', explanation: '', explanation_en: '', order_num: 1 };
 
 export default function AdminExercises() {
   const [items, setItems]     = useState<Exercise[]>([]);
@@ -40,8 +41,10 @@ export default function AdminExercises() {
     setEditing(ex);
     setForm({
       lesson_id: ex.lesson_id, type: ex.type, question: ex.question,
+      question_en: ex.question_en || '',
       options: ex.options ? JSON.stringify(ex.options) : '',
-      correct_answer: ex.correct_answer, explanation: ex.explanation || '', order_num: ex.order_num
+      correct_answer: ex.correct_answer, explanation: ex.explanation || '',
+      explanation_en: ex.explanation_en || '', order_num: ex.order_num
     });
     setModal(true);
   };
@@ -156,14 +159,35 @@ export default function AdminExercises() {
                 {exerciseHint}
               </div>
 
-              <div className="admin-field"><label>Вопрос / Задание</label>
-                <textarea value={form.question} onChange={e => setForm({...form, question: e.target.value})} placeholder={
-                  form.type === 'speaking' ? 'Произнесите: "Сәлеметсіз бе"'
-                  : form.type === 'listening' ? 'Прослушайте и выберите правильный перевод'
-                  : form.type === 'sentence' ? 'Составьте предложение: "Менің атым Амир"'
-                  : form.type === 'grammar' ? 'Вставьте пропущенное слово: "Менің ___ Амир"'
-                  : 'Переведите: "Привет"'
-                } /></div>
+              <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', marginBottom: 4, border: '1.5px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6366f1', marginBottom: 8, letterSpacing: '0.04em' }}>🌐 ВОПРОС / ЗАДАНИЕ</div>
+                <div className="admin-field" style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700 }}>RU</span>
+                    На русском
+                  </label>
+                  <textarea value={form.question} onChange={e => setForm({...form, question: e.target.value})} placeholder={
+                    form.type === 'speaking' ? 'Произнесите: "Сәлеметсіз бе"'
+                    : form.type === 'listening' ? 'Прослушайте и выберите правильный перевод'
+                    : form.type === 'sentence' ? 'Составьте предложение: "Менің атым Амир"'
+                    : form.type === 'grammar' ? 'Вставьте пропущенное слово: "Менің ___ Амир"'
+                    : 'Переведите: "Привет"'
+                  } />
+                </div>
+                <div className="admin-field" style={{ marginBottom: 0 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ background: '#2563eb', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700 }}>EN</span>
+                    In English (необязательно)
+                  </label>
+                  <textarea value={form.question_en} onChange={e => setForm({...form, question_en: e.target.value})} placeholder={
+                    form.type === 'speaking' ? 'Say: "Сәлеметсіз бе"'
+                    : form.type === 'listening' ? 'Listen and choose the correct translation'
+                    : form.type === 'sentence' ? 'Build the sentence: "Менің атым Амир"'
+                    : form.type === 'grammar' ? 'Fill in the blank: "Менің ___ Амир"'
+                    : 'Translate: "Hello"'
+                  } />
+                </div>
+              </div>
 
               {(form.type === 'choice' || form.type === 'translation' || form.type === 'listening' || form.type === 'sentence' || form.type === 'grammar') && (
                 <div className="admin-field">
@@ -176,8 +200,23 @@ export default function AdminExercises() {
               <div className="admin-field"><label>Правильный ответ</label>
                 <input value={form.correct_answer} onChange={e => setForm({...form, correct_answer: e.target.value})} placeholder={form.type === 'speaking' ? 'Сәлеметсіз бе' : 'Сәлем'} /></div>
 
-              <div className="admin-field"><label>Пояснение (необязательно)</label>
-                <input value={form.explanation} onChange={e => setForm({...form, explanation: e.target.value})} placeholder="Сәлем — приветствие в казахском языке" /></div>
+              <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', border: '1.5px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6366f1', marginBottom: 8, letterSpacing: '0.04em' }}>💡 ПОЯСНЕНИЕ (необязательно)</div>
+                <div className="admin-field" style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ background: '#dc2626', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700 }}>RU</span>
+                    На русском
+                  </label>
+                  <input value={form.explanation} onChange={e => setForm({...form, explanation: e.target.value})} placeholder="Сәлем — приветствие в казахском языке" />
+                </div>
+                <div className="admin-field" style={{ marginBottom: 0 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ background: '#2563eb', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: '0.7rem', fontWeight: 700 }}>EN</span>
+                    In English
+                  </label>
+                  <input value={form.explanation_en} onChange={e => setForm({...form, explanation_en: e.target.value})} placeholder="Sәlem — a greeting in the Kazakh language" />
+                </div>
+              </div>
 
               <div className="admin-form-actions">
                 <button className="btn-admin-cancel" onClick={close}>Отмена</button>

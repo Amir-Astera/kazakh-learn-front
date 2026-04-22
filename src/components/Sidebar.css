@@ -254,6 +254,43 @@
   align-items: flex-start;
   position: relative;
 }
+
+/* Long absence — orange/amber */
+.smart-reminder--long_absence {
+  background: linear-gradient(135deg, #fff7ed, #fef3c7);
+  border-color: #fed7aa;
+}
+.smart-reminder--long_absence .reminder-icon {
+  background: #ffedd5;
+}
+.smart-reminder--long_absence .reminder-content h4 { color: #9a3412; }
+.smart-reminder--long_absence .reminder-content p { color: #c2410c; }
+.smart-reminder--long_absence .btn-primary {
+  background: #ea580c;
+}
+.smart-reminder--long_absence .btn-primary:hover { background: #c2410c; }
+
+/* Spaced repetition — purple */
+.smart-reminder--spaced_repetition {
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+  border-color: #c4b5fd;
+}
+.smart-reminder--spaced_repetition .reminder-icon {
+  background: #ede9fe;
+}
+.smart-reminder--spaced_repetition .reminder-content h4 { color: #4c1d95; }
+.smart-reminder--spaced_repetition .reminder-content p { color: #6d28d9; }
+.smart-reminder--spaced_repetition .btn-primary {
+  background: #7c3aed;
+}
+.smart-reminder--spaced_repetition .btn-primary:hover { background: #6d28d9; }
+
+/* Falling progress — indigo (default, existing colours) */
+.smart-reminder--falling_progress {
+  background: linear-gradient(135deg, var(--indigo-50), var(--blue-50));
+  border-color: var(--indigo-100);
+}
+
 .reminder-icon {
   width: 32px; height: 32px;
   background: var(--indigo-100);

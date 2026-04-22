@@ -22,9 +22,11 @@ interface Quest {
 }
 
 interface Reminder {
+  type?: 'long_absence' | 'spaced_repetition' | 'falling_progress';
   title?: string;
   message?: string;
   skill_name?: string;
+  days_away?: number | null;
 }
 
 interface LevelModule {
@@ -171,24 +173,69 @@ export default function Sidebar() {
 
       {/* Smart reminder */}
       {reminder && (
-        <div className="smart-reminder">
+        <div className={`smart-reminder smart-reminder--${reminder.type || 'default'}`}>
           <div className="reminder-icon">
-            <svg width="16" height="16" fill="none" stroke="#6366f1" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+            {reminder.type === 'long_absence' ? (
+              <svg width="16" height="16" fill="none" stroke="#f97316" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+            ) : reminder.type === 'spaced_repetition' ? (
+              <svg width="16" height="16" fill="none" stroke="#8b5cf6" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" fill="none" stroke="#6366f1" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
           </div>
           <div className="reminder-content">
-            <h4>{reminder.skill_name ? t('sidebar.reminderTitle') : (reminder.title || t('sidebar.reminderTitle'))}</h4>
-            <p>
-              {reminder.skill_name
-                ? t('sidebar.reminderMsg').replace(
+            {reminder.type === 'long_absence' && (
+              <>
+                <h4>{t('reminder.absence.title')}</h4>
+                <p>
+                  {reminder.days_away != null
+                    ? t('reminder.absence.msg').replace('{days}', String(reminder.days_away))
+                    : t('reminder.absence.msgFirst')}
+                </p>
+              </>
+            )}
+            {reminder.type === 'spaced_repetition' && (
+              <>
+                <h4>{t('reminder.spaced.title')}</h4>
+                <p>{t('reminder.spaced.msg')}</p>
+              </>
+            )}
+            {reminder.type === 'falling_progress' && (
+              <>
+                <h4>{t('reminder.falling.title')}</h4>
+                <p>
+                  {t('reminder.falling.msg').replace(
                     '{skill}',
-                    t(`skill.${reminder.skill_name}`) !== `skill.${reminder.skill_name}`
-                      ? t(`skill.${reminder.skill_name}`)
-                      : reminder.skill_name,
-                  )
-                : (reminder.message || '')}
-            </p>
+                    reminder.skill_name
+                      ? (t(`skill.${reminder.skill_name}`) !== `skill.${reminder.skill_name}`
+                          ? t(`skill.${reminder.skill_name}`)
+                          : reminder.skill_name)
+                      : '',
+                  )}
+                </p>
+              </>
+            )}
+            {!reminder.type && (
+              <>
+                <h4>{reminder.skill_name ? t('sidebar.reminderTitle') : (reminder.title || t('sidebar.reminderTitle'))}</h4>
+                <p>
+                  {reminder.skill_name
+                    ? t('sidebar.reminderMsg').replace(
+                        '{skill}',
+                        t(`skill.${reminder.skill_name}`) !== `skill.${reminder.skill_name}`
+                          ? t(`skill.${reminder.skill_name}`)
+                          : reminder.skill_name,
+                      )
+                    : (reminder.message || '')}
+                </p>
+              </>
+            )}
             <button type="button" className="btn-primary" onClick={() => navigate('/review-words')}>{t('sidebar.reviewWords')}</button>
           </div>
         </div>

@@ -15,9 +15,11 @@ interface Exercise {
   id: number;
   type: string;
   question: string;
+  question_en: string | null;
   options: string[];
   correct_answer: string;
   explanation: string | null;
+  explanation_en: string | null;
 }
 
 interface LessonData {
@@ -32,6 +34,7 @@ interface LessonData {
 type FeedbackState = {
   correct: boolean;
   explanation?: string | null;
+  explanation_en?: string | null;
   correct_answer?: string;
 } | null;
 
@@ -356,7 +359,7 @@ function LessonShell({ badge, title, subtitle, children }: LessonShellProps) {
 }
 
 export default function LessonPage() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { lessonId } = useParams();
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
@@ -545,10 +548,20 @@ export default function LessonPage() {
 
     if (isMatch) {
       setScore(prev => prev + Math.floor(100 / totalExercises));
-      setFeedback({ correct: true, correct_answer: exercise.correct_answer });
+      setFeedback({
+        correct: true,
+        correct_answer: exercise.correct_answer,
+        explanation: exercise.explanation,
+        explanation_en: exercise.explanation_en,
+      });
     } else {
       setMistakes(prev => prev + 1);
-      setFeedback({ correct: false, correct_answer: exercise.correct_answer });
+      setFeedback({
+        correct: false,
+        correct_answer: exercise.correct_answer,
+        explanation: exercise.explanation,
+        explanation_en: exercise.explanation_en,
+      });
     }
   };
 
@@ -617,7 +630,7 @@ export default function LessonPage() {
 
         <div className="exercise-area lesson-exercise-card">
           <div className="exercise-type-badge">{exerciseTypeLabel}</div>
-          <h2 className="exercise-question">{exercise.question}</h2>
+          <h2 className="exercise-question">{(lang === 'en' && exercise.question_en) ? exercise.question_en : exercise.question}</h2>
 
           {exercise.type === 'speaking' ? (
             <div className="lesson-speaking-wrap">
@@ -686,7 +699,13 @@ export default function LessonPage() {
                 {!feedback.correct && feedback.correct_answer && (
                   <span> · {t('lesson.correctAnswer')}: <strong>{feedback.correct_answer}</strong></span>
                 )}
-                {feedback.explanation && <p className="feedback-explanation">{feedback.explanation}</p>}
+                {(lang === 'en' && feedback.explanation_en
+                    ? feedback.explanation_en
+                    : feedback.explanation) && (
+                  <p className="feedback-explanation">
+                    {lang === 'en' && feedback.explanation_en ? feedback.explanation_en : feedback.explanation}
+                  </p>
+                )}
               </div>
             </div>
           )}

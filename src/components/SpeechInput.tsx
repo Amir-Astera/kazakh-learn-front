@@ -78,13 +78,18 @@ export default function SpeechInput({ targetWord, onResult, disabled = false }: 
 
       setAttempts((prevAttempts) => {
         const next = prevAttempts + 1;
+        if (!isMatch && next >= MAX_ATTEMPTS) {
+          setTimeout(() => onResult(bestTranscript, false), 400);
+        }
         return next;
       });
       setTranscript(bestTranscript);
       setSimilarity(Math.round(bestSimilarity * 100));
       setStatus(isMatch ? 'success' : 'fail');
       setListening(false);
-      onResult(bestTranscript, isMatch);
+      if (isMatch) {
+        onResult(bestTranscript, true);
+      }
     };
 
     recognition.onerror = (event: any) => {
